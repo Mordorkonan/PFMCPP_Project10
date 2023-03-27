@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="GyK1XX" name="PFMCPP_Project10" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" companyName="MyGraduationCompany">
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" companyName="MordorkonanTestCompany">
   <MAINGROUP id="bElXU7" name="PFMCPP_Project10">
     <GROUP id="{7972593D-E12A-4264-9D10-05B48DDB7490}" name="Source">
       <FILE id="z08k8N" name="PluginProcessor.cpp" compile="1" resource="0"
