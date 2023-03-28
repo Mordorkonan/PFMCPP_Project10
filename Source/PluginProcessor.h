@@ -13,6 +13,75 @@
 //==============================================================================
 /**
 */
+template<typename T, size_t Size>
+struct Fifo
+{
+    size_t getSize() const noexcept
+    {
+        return Size;
+    }
+
+    void prepare(int numSamples, int numChannels)
+    {
+        for (auto& bufferCell : buffer)
+        {
+            // setSize() and clear() are taken from AudioBuffer<Type> class
+            bufferCell.setSize(numChannels,
+                       numSamples,
+                       false,
+                       true,
+                       false);
+
+            bufferCell.clear();
+        }
+    }
+
+    bool push(const T& t)
+    {
+        auto write = fifo.write(1);
+        if (write.blockSize1 > 0)
+        {
+            t = buffer[write.startIndex1];
+            return true;
+        }
+        return false;
+        //if (fifo.write(1).blockSize1 > 0)
+        //{
+        //    t = buffer[fifo.write(1).startIndex1];
+        //    return true;
+        //}
+        //return false;
+    }
+    bool pull(T& t)
+    {   
+        auto read = fifo.read(1);
+        if (read.blockSize1 > 0)
+        {
+            t = buffer[read.startIndex1];
+            return true;
+        }
+        return false;
+        //if (fifo.read(1).blockSize1 > 0)
+        //{
+        //    t = buffer[fifo.read(1).startIndex1];
+        //    return true;
+        //}
+        //return false;
+    }
+
+    int getNumAvailableForReading() const
+    {
+        return fifo.getNumReady();
+    }
+    int getAvailableSpace() const
+    {
+        return fifo.getFreeSpace();
+    }
+private:
+    juce::AbstractFifo fifo{ Size };
+    std::array<T, Size> buffer;
+};
+
 class PFMCPP_Project10AudioProcessor  : public juce::AudioProcessor
                             #if JucePlugin_Enable_ARA
                              , public juce::AudioProcessorARAExtension
