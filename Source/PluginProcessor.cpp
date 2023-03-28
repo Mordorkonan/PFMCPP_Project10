@@ -107,6 +107,15 @@ void PFMCPP_Project10AudioProcessor::releaseResources()
 void PFMCPP_Project10AudioProcessorEditor::timerCallback()
 {
     int numForReading = audioProcessor.audioBufferFifo.getNumAvailableForReading();
+    int iterator = 0;
+    if (numForReading > 0)
+    {
+        while (iterator < numForReading)
+        {
+            audioProcessor.audioBufferFifo.pull(audioBuffer);
+            ++iterator;
+        }
+    }
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
