@@ -41,7 +41,7 @@ struct Fifo
         auto write = fifo.write(1);
         if (write.blockSize1 > 0)
         {
-            t = buffer[write.startIndex1];
+            buffer[write.startIndex1] = t;
             return true;
         }
         return false;
