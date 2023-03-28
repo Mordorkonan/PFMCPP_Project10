@@ -104,6 +104,11 @@ void PFMCPP_Project10AudioProcessor::releaseResources()
     // spare memory, etc.
 }
 
+void PFMCPP_Project10AudioProcessorEditor::timerCallback()
+{
+    int numForReading = audioProcessor.audioBufferFifo.getNumAvailableForReading();
+}
+
 #ifndef JucePlugin_PreferredChannelConfigurations
 bool PFMCPP_Project10AudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {

@@ -15,6 +15,7 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
+    startTimerHz(60);
     setSize (400, 300);
 }
 
