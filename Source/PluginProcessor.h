@@ -78,6 +78,7 @@ struct Fifo
         return fifo.getFreeSpace();
     }
 private:
+    static constexpr int Size = 30;
     juce::AbstractFifo fifo{ Size };
     std::array<T, Size> buffer;
 };

@@ -11,9 +11,19 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 
+#define NEGATIVE_INFINITY -66.0f
+#define MAX_DECIBELS 12.0f
 //==============================================================================
 /**
 */
+struct Meter : juce::Component
+{
+    void paint(juce::Graphics&) override;
+    void update(float dbLevel);
+private:
+    float peakDb { NEGATIVE_INFINITY };
+};
+
 class PFMCPP_Project10AudioProcessorEditor  : public juce::AudioProcessorEditor,
                                               public juce::Timer
 {

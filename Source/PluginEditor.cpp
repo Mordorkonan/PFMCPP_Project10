@@ -34,6 +34,24 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
     g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
 }
 
+void Meter::paint(juce::Graphics& g)
+{
+    using namespace juce;
+
+    auto bounds = getLocalBounds().toFloat().reduced(10);
+    g.setColour(Colours::darkgrey);
+    g.drawRect(bounds, 10.0f);
+    float remappedPeakDb = jmap<float>(peakDb, NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getHeight(), 0.0f);
+    g.setColour(Colours::white);
+    g.fillRect(0.0f, remappedPeakDb, bounds.reduced(6).getWidth(), bounds.reduced(6).getHeight());
+}
+
+void Meter::update(float dbLevel)
+{
+    peakDb = dbLevel;
+    repaint();
+}
+
 void PFMCPP_Project10AudioProcessorEditor::resized()
 {
     // This is generally where you'll want to lay out the positions of any
