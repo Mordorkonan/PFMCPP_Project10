@@ -106,14 +106,13 @@ void PFMCPP_Project10AudioProcessor::releaseResources()
 
 void PFMCPP_Project10AudioProcessorEditor::timerCallback()
 {
-    int numForReading = audioProcessor.audioBufferFifo.getNumAvailableForReading();
-    int iterator = 0;
-    if (numForReading > 0)
+    if (audioProcessor.audioBufferFifo.getNumAvailableForReading() > 0)
     {
-        while (iterator < numForReading)
+        while (audioProcessor.audioBufferFifo.pull(buffer))
         {
-            audioProcessor.audioBufferFifo.pull(audioBuffer);
-            ++iterator;
+            auto magDb = juce::Decibels::gainToDecibels(buffer.getMagnitude(0, 0, audioProcessor.audioBufferFifo.getSize()), NEGATIVE_INFINITY);
+            meter.update(magDb);
+            repaint();
         }
     }
 }

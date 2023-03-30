@@ -41,7 +41,7 @@ private:
     // access the processor object that created it.
     PFMCPP_Project10AudioProcessor& audioProcessor;
 
-    juce::AudioBuffer<float> audioBuffer;
+    juce::AudioBuffer<float> buffer;
     Meter meter;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)

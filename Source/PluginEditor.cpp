@@ -60,7 +60,6 @@ void Meter::paint(juce::Graphics& g)
 void Meter::update(float dbLevel)
 {
     peakDb = dbLevel;
-    repaint();
 }
 
 void PFMCPP_Project10AudioProcessorEditor::resized()
