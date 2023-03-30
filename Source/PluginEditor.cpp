@@ -34,14 +34,6 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
     g.setColour (juce::Colours::white);
     g.setFont (15.0f);
     g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
-    
-    // Testing placement
-    //auto bounds = getLocalBounds().toFloat().reduced(10);
-    //g.setColour(juce::Colours::darkgrey);
-    //g.drawRect(bounds, 5.0f);
-    //float remappedPeakDb = juce::jmap<float>(10.0f, NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getHeight(), 0.0f);
-    //g.setColour(juce::Colours::white);
-    //g.fillRect(15.0f, remappedPeakDb, bounds.reduced(5).getWidth(), bounds.reduced(5).getHeight()); // 15 = reduced(10) + 5.0f as line thickness
 }
 
 void Meter::paint(juce::Graphics& g)
