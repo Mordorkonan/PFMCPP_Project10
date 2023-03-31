@@ -112,7 +112,6 @@ void PFMCPP_Project10AudioProcessorEditor::timerCallback()
         {
             auto magDb = juce::Decibels::gainToDecibels(buffer.getMagnitude(0, 0, audioProcessor.audioBufferFifo.getSize()), NEGATIVE_INFINITY);
             meter.update(magDb);
-            repaint();
         }
     }
 }

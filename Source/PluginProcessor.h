@@ -45,12 +45,6 @@ struct Fifo
             return true;
         }
         return false;
-        //if (fifo.write(1).blockSize1 > 0)
-        //{
-        //    t = buffer[fifo.write(1).startIndex1];
-        //    return true;
-        //}
-        //return false;
     }
     bool pull(T& t)
     {   
@@ -61,12 +55,6 @@ struct Fifo
             return true;
         }
         return false;
-        //if (fifo.read(1).blockSize1 > 0)
-        //{
-        //    t = buffer[fifo.read(1).startIndex1];
-        //    return true;
-        //}
-        //return false;
     }
 
     int getNumAvailableForReading() const
@@ -77,8 +65,8 @@ struct Fifo
     {
         return fifo.getFreeSpace();
     }
+
 private:
-    static constexpr int Size = 30;
     juce::AbstractFifo fifo{ Size };
     std::array<T, Size> buffer;
 };
@@ -126,7 +114,7 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    Fifo<juce::AudioBuffer<float>, 1> audioBufferFifo;
+    Fifo<juce::AudioBuffer<float>, 32> audioBufferFifo;
 
 private:
     //==============================================================================

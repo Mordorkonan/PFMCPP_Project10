@@ -40,18 +40,23 @@ void Meter::paint(juce::Graphics& g)
 {
     using namespace juce;
     auto bounds = getLocalBounds().toFloat();
-    float outline = 2.0f;
+
     g.setColour(Colours::darkgrey);
-    g.drawRect(bounds, outline);
-    float remappedPeakDb = jmap<float>(peakDb, NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getHeight() - outline, bounds.getY() + outline);
+    g.drawRect(bounds, 2.0f);
+
+    bounds = bounds.reduced(2);
+
+    float remappedPeakDb = jmap<float>(peakDb, NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY());
+
     g.setColour(Colours::white);
-    Rectangle<float> rect { bounds.getX() + 2, remappedPeakDb, bounds.reduced(2).getWidth(), bounds.getHeight() };
-    g.fillRect(rect);
+    g.fillRect(bounds.withY(remappedPeakDb).withBottom(bounds.getBottom()));
+    // i like this implementation more, especially the last string in this function
 }
 
 void Meter::update(float dbLevel)
 {
     peakDb = dbLevel;
+    repaint();
 }
 
 void PFMCPP_Project10AudioProcessorEditor::resized()
