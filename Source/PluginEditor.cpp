@@ -110,4 +110,6 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     // subcomponents in your editor..
     auto bounds = getLocalBounds();
     meter.setBounds(15, 15, 20, bounds.getHeight() - 30);
+    dbScale.setBounds(meter.getBounds().removeFromLeft(meter.getWidth() + 2));
+    dbScale.buildBackgroundImage(6, meter.getBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
 }
