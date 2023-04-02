@@ -71,13 +71,18 @@ void DbScale::buildBackgroundImage(int dbDivision, juce::Rectangle<int> meterBou
     if (minDb > maxDb)
         std::swap(minDb, maxDb);
 
-    auto bounds = getLocalBounds().toFloat();
+    auto bounds = getLocalBounds();
     if (bounds.isEmpty())
         return;
 
-    auto globalScaleFactor = juce::Desktop::getInstance().getGlobalScaleFactor();
     juce::Graphics gbkgd(bkgd.rescaled(meterBounds.getWidth(), meterBounds.getHeight()));
-    gbkgd.addTransform(juce::AffineTransform::scale(globalScaleFactor));
+    gbkgd.addTransform(juce::AffineTransform::scale(juce::Desktop::getInstance().getGlobalScaleFactor()));
+
+    for (auto& tick : getTicks(dbDivision, meterBounds, minDb, maxDb))
+    {
+        gbkgd.setColour(juce::Colours::white);
+        gbkgd.drawFittedText(juce::String(tick.db), bounds, juce::Justification::centred, (maxDb - minDb) / dbDivision);
+    }
 }
 
 std::vector<Tick> DbScale::getTicks(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb)
