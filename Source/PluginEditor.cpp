@@ -59,6 +59,46 @@ void Meter::update(float dbLevel)
     repaint();
 }
 
+void DbScale::paint(juce::Graphics& g)
+{
+    g.setColour(juce::Colours::black);
+    g.setOpacity(0.35f);
+    g.fillRect(getLocalBounds().toFloat());
+}
+
+void DbScale::buildBackgroundImage(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb)
+{
+    if (minDb > maxDb)
+        std::swap(minDb, maxDb);
+
+    auto bounds = getLocalBounds().toFloat();
+    if (bounds.isEmpty())
+        return;
+
+    auto globalScaleFactor = juce::Desktop::getInstance().getGlobalScaleFactor();
+    juce::Graphics gbkgd(bkgd.rescaled(meterBounds.getWidth(), meterBounds.getHeight()));
+    gbkgd.addTransform(juce::AffineTransform::scale(globalScaleFactor));
+}
+
+std::vector<Tick> DbScale::getTicks(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb)
+{
+    if (minDb > maxDb)
+        std::swap(minDb, maxDb);
+
+    std::vector<Tick> tickVector;
+    tickVector.resize((maxDb - minDb) / dbDivision);
+    tickVector.clear();
+
+    for (int db = minDb; db <= maxDb; db += dbDivision)
+    {
+        Tick tick;
+        tick.db = juce::jmap<float>(db, minDb, maxDb, meterBounds.getBottom(), meterBounds.getY());
+        tickVector.push_back(tick);
+    }
+
+    return tickVector;
+}
+
 void PFMCPP_Project10AudioProcessorEditor::resized()
 {
     // This is generally where you'll want to lay out the positions of any
