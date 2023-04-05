@@ -16,6 +16,7 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
     addAndMakeVisible(meter);
+    addAndMakeVisible(dbScale);
 
     startTimerHz(60);
     setSize (400, 300);
@@ -61,9 +62,7 @@ void Meter::update(float dbLevel)
 
 void DbScale::paint(juce::Graphics& g)
 {
-    g.setColour(juce::Colours::black);
-    g.setOpacity(0.35f);
-    g.fillRect(getLocalBounds().toFloat());
+    g.drawImage(bkgd, getLocalBounds().toFloat());
 }
 
 void DbScale::buildBackgroundImage(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb)
@@ -75,14 +74,21 @@ void DbScale::buildBackgroundImage(int dbDivision, juce::Rectangle<int> meterBou
     if (bounds.isEmpty())
         return;
 
-    juce::Graphics gbkgd(bkgd.rescaled(meterBounds.getWidth(), meterBounds.getHeight()));
+    bkgd = juce::Image(juce::Image::PixelFormat::RGB, getWidth(), getHeight(), true);
+    juce::Graphics gbkgd(bkgd);
     gbkgd.addTransform(juce::AffineTransform::scale(juce::Desktop::getInstance().getGlobalScaleFactor()));
-
+    gbkgd.setColour(juce::Colours::white);
     for (auto& tick : getTicks(dbDivision, meterBounds, minDb, maxDb))
     {
-        gbkgd.setColour(juce::Colours::white);
-        gbkgd.drawFittedText(juce::String(tick.db), bounds, juce::Justification::centred, (maxDb - minDb) / dbDivision);
+        gbkgd.drawFittedText(juce::String(tick.db),
+            0, 
+            tick.y - 17, //JUCE_LIVE_CONSTANT(20),    // 17 is label cell height accounting font size
+            getWidth(),
+            getHeight() / ((maxDb - minDb) / dbDivision),
+            juce::Justification::centred, 1);
     }
+
+    //repaint();
 }
 
 std::vector<Tick> DbScale::getTicks(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb)
@@ -97,7 +103,8 @@ std::vector<Tick> DbScale::getTicks(int dbDivision, juce::Rectangle<int> meterBo
     for (int db = minDb; db <= maxDb; db += dbDivision)
     {
         Tick tick;
-        tick.db = juce::jmap<float>(db, minDb, maxDb, meterBounds.getBottom(), meterBounds.getY());
+        tick.db = db;
+        tick.y = juce::jmap(db, minDb, maxDb, meterBounds.getBottom(), meterBounds.getY());
         tickVector.push_back(tick);
     }
 
@@ -109,7 +116,11 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     // This is generally where you'll want to lay out the positions of any
     // subcomponents in your editor..
     auto bounds = getLocalBounds();
-    meter.setBounds(15, 15, 20, bounds.getHeight() - 30);
-    dbScale.setBounds(meter.getBounds().removeFromLeft(meter.getWidth() + 2));
+    //meter.setBounds(15, 45, 20, bounds.getHeight() - 30);
+    meter.setBounds(15,
+                    JUCE_LIVE_CONSTANT(15),
+                    20,
+                    JUCE_LIVE_CONSTANT(getHeight() - 30));
+    dbScale.setBounds(meter.getRight(), 0, meter.getWidth() + 10, getHeight());
     dbScale.buildBackgroundImage(6, meter.getBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
 }
