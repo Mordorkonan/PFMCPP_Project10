@@ -116,6 +116,8 @@ public:
 
     Fifo<juce::AudioBuffer<float>, 32> audioBufferFifo;
 
+    juce::dsp::Oscillator<float> osc;
+
 private:
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessor)

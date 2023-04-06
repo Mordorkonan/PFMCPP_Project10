@@ -96,6 +96,15 @@ void PFMCPP_Project10AudioProcessor::prepareToPlay (double sampleRate, int sampl
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
     audioBufferFifo.prepare(samplesPerBlock, getNumInputChannels());
+
+    juce::dsp::ProcessSpec oscSpec;
+    osc.initialise( [] (float x) { return std::sin(x); } );
+    oscSpec.sampleRate = sampleRate;
+    oscSpec.maximumBlockSize = samplesPerBlock;
+    oscSpec.numChannels = getNumOutputChannels();
+    osc.prepare(oscSpec);
+    //osc.setFrequency(440.0f);
+    osc.setFrequency(JUCE_LIVE_CONSTANT(440));
 }
 
 void PFMCPP_Project10AudioProcessor::releaseResources()
@@ -148,6 +157,14 @@ void PFMCPP_Project10AudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
+
+    auto numSamples = buffer.getNumSamples();
+    buffer.clear();
+
+    for (int i = 0; i < numSamples; ++i)
+    {
+        buffer.setSample(0, i, osc.processSample(1));
+    }
 
     audioBufferFifo.push(buffer);
 
