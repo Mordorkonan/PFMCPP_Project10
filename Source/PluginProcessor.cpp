@@ -97,17 +97,19 @@ void PFMCPP_Project10AudioProcessor::prepareToPlay (double sampleRate, int sampl
     // initialisation that you need..
     audioBufferFifo.prepare(samplesPerBlock, getNumInputChannels());
 
-    juce::dsp::ProcessSpec oscSpec;
-    osc.initialise( [] (float x) { return std::sin(x); } );
-    oscSpec.sampleRate = sampleRate;
-    oscSpec.maximumBlockSize = samplesPerBlock;
-    oscSpec.numChannels = 1;
-    osc.prepare(oscSpec);
-    osc.setFrequency(440.0f);
+    #ifdef OSC_GAIN
+        juce::dsp::ProcessSpec oscSpec;
+        osc.initialise( [] (float x) { return std::sin(x); } );
+        oscSpec.sampleRate = sampleRate;
+        oscSpec.maximumBlockSize = samplesPerBlock;
+        oscSpec.numChannels = 1;
+        osc.prepare(oscSpec);
+        osc.setFrequency(440.0f);
 
-    gain.reset();
-    gain.prepare(oscSpec);
-    gain.setGainDecibels(-24);
+        gain.reset();
+        gain.prepare(oscSpec);
+        gain.setGainDecibels(-24);
+    #endif
 }
 
 void PFMCPP_Project10AudioProcessor::releaseResources()
@@ -161,21 +163,22 @@ void PFMCPP_Project10AudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    auto numSamples = buffer.getNumSamples();
-    buffer.clear();
+    #ifdef OSC_GAIN
+        auto numSamples = buffer.getNumSamples();
+        buffer.clear();
 
-    gain.setGainDecibels(JUCE_LIVE_CONSTANT(0));    // gain
-    osc.setFrequency(JUCE_LIVE_CONSTANT(440));      // freq
-    for (int i = 0; i < numSamples; ++i)
-    {
-        buffer.setSample(0, i, osc.processSample(1));
-    }
+        gain.setGainDecibels(JUCE_LIVE_CONSTANT(0));    // gain
+        osc.setFrequency(JUCE_LIVE_CONSTANT(440));      // freq
+        for (int i = 0; i < numSamples; ++i)
+        {
+            buffer.setSample(0, i, osc.processSample(1));
+        }
 
-    for (int i = 0; i < numSamples; ++i)
-    {
-        buffer.setSample(0, i, gain.processSample(buffer.getSample(0, i)));
-    }
-
+        for (int i = 0; i < numSamples; ++i)
+        {
+            buffer.setSample(0, i, gain.processSample(buffer.getSample(0, i)));
+        }
+    #endif
     audioBufferFifo.push(buffer);
     buffer.clear();
 
