@@ -169,15 +169,17 @@ void PFMCPP_Project10AudioProcessor::processBlock (juce::AudioBuffer<float>& buf
 
         gain.setGainDecibels(JUCE_LIVE_CONSTANT(0));    // gain
         osc.setFrequency(JUCE_LIVE_CONSTANT(440));      // freq
+
+        auto audioBlock = juce::dsp::AudioBlock<float>(buffer);
+        auto gainProcessContext = juce::dsp::ProcessContextReplacing<float>(audioBlock);
+
+        //osc.process(gainProcessContext);
         for (int i = 0; i < numSamples; ++i)
         {
-            buffer.setSample(0, i, osc.processSample(1));
+            buffer.setSample(0, i, osc.processSample(audioBlock.getSample(0, i)));
         }
 
-        for (int i = 0; i < numSamples; ++i)
-        {
-            buffer.setSample(0, i, gain.processSample(buffer.getSample(0, i)));
-        }
+        gain.process(gainProcessContext);
     #endif
     audioBufferFifo.push(buffer);
     buffer.clear();
