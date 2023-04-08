@@ -168,7 +168,7 @@ void PFMCPP_Project10AudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         buffer.clear();
 
         gain.setGainDecibels(JUCE_LIVE_CONSTANT(0));    // gain
-        osc.setFrequency(JUCE_LIVE_CONSTANT(440));      // freq
+        osc.setFrequency(440.0f);      // freq
 
         auto audioBlock = juce::dsp::AudioBlock<float>(buffer);
         auto gainProcessContext = juce::dsp::ProcessContextReplacing<float>(audioBlock);
