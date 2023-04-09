@@ -102,7 +102,7 @@ void PFMCPP_Project10AudioProcessor::prepareToPlay (double sampleRate, int sampl
         osc.initialise( [] (float x) { return std::sin(x); } );
         oscSpec.sampleRate = sampleRate;
         oscSpec.maximumBlockSize = samplesPerBlock;
-        oscSpec.numChannels = 1;
+        oscSpec.numChannels = getNumInputChannels();
         osc.prepare(oscSpec);
         osc.setFrequency(440.0f);
 
@@ -168,15 +168,17 @@ void PFMCPP_Project10AudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         buffer.clear();
 
         gain.setGainDecibels(JUCE_LIVE_CONSTANT(0));    // gain
-        osc.setFrequency(440.0f);      // freq
 
         auto audioBlock = juce::dsp::AudioBlock<float>(buffer);
         auto gainProcessContext = juce::dsp::ProcessContextReplacing<float>(audioBlock);
 
         //osc.process(gainProcessContext);
-        for (int i = 0; i < numSamples; ++i)
+        for (int channel = 0; channel < totalNumOutputChannels; ++channel)
         {
-            buffer.setSample(0, i, osc.processSample(audioBlock.getSample(0, i)));
+            for (int i = 0; i < numSamples; ++i)
+            {
+                buffer.setSample(channel, i, osc.processSample(0));
+            }
         }
 
         gain.process(gainProcessContext);
