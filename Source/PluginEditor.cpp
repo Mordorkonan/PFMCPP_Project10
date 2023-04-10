@@ -111,6 +111,19 @@ std::vector<Tick> DbScale::getTicks(int dbDivision, juce::Rectangle<int> meterBo
     return tickVector;
 }
 
+void PFMCPP_Project10AudioProcessorEditor::timerCallback()
+{
+    if (audioProcessor.audioBufferFifo.pull(buffer))
+    {
+        while (audioProcessor.audioBufferFifo.pull(buffer))
+        {
+
+        }
+        auto magDb = juce::Decibels::gainToDecibels(buffer.getMagnitude(0, 0, audioProcessor.audioBufferFifo.getSize()), NEGATIVE_INFINITY);
+        meter.update(magDb);
+    }
+}
+
 void PFMCPP_Project10AudioProcessorEditor::resized()
 {
     // This is generally where you'll want to lay out the positions of any

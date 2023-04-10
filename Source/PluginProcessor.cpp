@@ -118,19 +118,6 @@ void PFMCPP_Project10AudioProcessor::releaseResources()
     // spare memory, etc.
 }
 
-void PFMCPP_Project10AudioProcessorEditor::timerCallback()
-{
-    if (audioProcessor.audioBufferFifo.pull(buffer))
-    {
-        while (audioProcessor.audioBufferFifo.pull(buffer))
-        {
-
-        }
-        auto magDb = juce::Decibels::gainToDecibels(buffer.getMagnitude(0, 0, audioProcessor.audioBufferFifo.getSize()), NEGATIVE_INFINITY);
-        meter.update(magDb);
-    }
-}
-
 #ifndef JucePlugin_PreferredChannelConfigurations
 bool PFMCPP_Project10AudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
@@ -173,18 +160,19 @@ void PFMCPP_Project10AudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         auto gainProcessContext = juce::dsp::ProcessContextReplacing<float>(audioBlock);
 
         //osc.process(gainProcessContext);
-        for (int channel = 0; channel < totalNumOutputChannels; ++channel)
+        for (int i = 0; i < numSamples; ++i)
         {
-            for (int i = 0; i < numSamples; ++i)
+            auto sample = osc.processSample(0);
+            for (int channel = 0; channel < totalNumOutputChannels; ++channel)
             {
-                buffer.setSample(channel, i, osc.processSample(0));
+                buffer.setSample(channel, i, sample);
             }
         }
 
         gain.process(gainProcessContext);
     #endif
     audioBufferFifo.push(buffer);
-    buffer.clear();
+    //buffer.clear();
 
     // In case we have more outputs than inputs, this code clears any output
     // channels that didn't contain input data, (because these aren't
