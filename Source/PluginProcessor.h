@@ -10,6 +10,7 @@
 
 #include <JuceHeader.h>
 
+#define OSC_GAIN
 //==============================================================================
 /**
 */
@@ -117,6 +118,10 @@ public:
     Fifo<juce::AudioBuffer<float>, 32> audioBufferFifo;
 
 private:
+    #ifdef OSC_GAIN
+        juce::dsp::Oscillator<float> osc;
+        juce::dsp::Gain<float> gain;
+    #endif
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessor)
 };

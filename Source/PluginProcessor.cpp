@@ -96,25 +96,26 @@ void PFMCPP_Project10AudioProcessor::prepareToPlay (double sampleRate, int sampl
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
     audioBufferFifo.prepare(samplesPerBlock, getNumInputChannels());
+
+    #ifdef OSC_GAIN
+        juce::dsp::ProcessSpec oscSpec;
+        osc.initialise( [] (float x) { return std::sin(x); } );
+        oscSpec.sampleRate = sampleRate;
+        oscSpec.maximumBlockSize = samplesPerBlock;
+        oscSpec.numChannels = getNumInputChannels();
+        osc.prepare(oscSpec);
+        osc.setFrequency(440.0f);
+
+        gain.reset();
+        gain.prepare(oscSpec);
+        gain.setGainDecibels(-24);
+    #endif
 }
 
 void PFMCPP_Project10AudioProcessor::releaseResources()
 {
     // When playback stops, you can use this as an opportunity to free up any
     // spare memory, etc.
-}
-
-void PFMCPP_Project10AudioProcessorEditor::timerCallback()
-{
-    if (audioProcessor.audioBufferFifo.pull(buffer))
-    {
-        while (audioProcessor.audioBufferFifo.pull(buffer))
-        {
-
-        }
-        auto magDb = juce::Decibels::gainToDecibels(buffer.getMagnitude(0, 0, audioProcessor.audioBufferFifo.getSize()), NEGATIVE_INFINITY);
-        meter.update(magDb);
-    }
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -149,7 +150,29 @@ void PFMCPP_Project10AudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
+    #ifdef OSC_GAIN
+        auto numSamples = buffer.getNumSamples();
+        buffer.clear();
+
+        gain.setGainDecibels(JUCE_LIVE_CONSTANT(0));    // gain
+
+        auto audioBlock = juce::dsp::AudioBlock<float>(buffer);
+        auto gainProcessContext = juce::dsp::ProcessContextReplacing<float>(audioBlock);
+
+        //osc.process(gainProcessContext);
+        for (int i = 0; i < numSamples; ++i)
+        {
+            auto sample = osc.processSample(0);
+            for (int channel = 0; channel < totalNumOutputChannels; ++channel)
+            {
+                buffer.setSample(channel, i, sample);
+            }
+        }
+
+        gain.process(gainProcessContext);
+    #endif
     audioBufferFifo.push(buffer);
+    //buffer.clear();
 
     // In case we have more outputs than inputs, this code clears any output
     // channels that didn't contain input data, (because these aren't
