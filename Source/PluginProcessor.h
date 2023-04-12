@@ -10,7 +10,7 @@
 
 #include <JuceHeader.h>
 
-//#define OSC_GAIN
+//#define OSC_GAIN true
 //==============================================================================
 /**
 */
@@ -118,7 +118,7 @@ public:
     Fifo<juce::AudioBuffer<float>, 32> audioBufferFifo;
 
 private:
-    #ifdef OSC_GAIN
+    #if OSC_GAIN
         juce::dsp::Oscillator<float> osc;
         juce::dsp::Gain<float> gain;
     #endif

@@ -53,6 +53,7 @@ struct ValueHolder : juce::Timer
     float getCurrentValue() const;
     float getHeldValue() const;
     bool getIsOverThreshold() const;
+    void updateIsOverThreshold();
 private:
     float threshold = 0;
     float currentValue = NEGATIVE_INFINITY;

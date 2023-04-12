@@ -24,7 +24,8 @@ void ValueHolder::timerCallback()
     juce::int64 now = juce::Time::currentTimeMillis();
     if (now - timeOfPeak > durationToHoldForMs)
     {
-        isOverThreshold = (currentValue > threshold) ? true : false;
+        //isOverThreshold = (currentValue > threshold) ? true : false;
+        updateIsOverThreshold();
         if (!isOverThreshold)
         {
             heldValue = NEGATIVE_INFINITY;
@@ -38,7 +39,8 @@ void ValueHolder::setThreshold(float th)
     juce::int64 now = juce::Time::currentTimeMillis();
     if (now - timeOfPeak > durationToHoldForMs)
     {
-        isOverThreshold = (currentValue > threshold) ? true : false;
+        //isOverThreshold = (currentValue > threshold) ? true : false;
+        updateIsOverThreshold();
     }
 }
 
@@ -64,6 +66,8 @@ float ValueHolder::getCurrentValue() const { return currentValue; }
 float ValueHolder::getHeldValue() const { return heldValue; }
 
 bool ValueHolder::getIsOverThreshold() const { return isOverThreshold; }
+
+void ValueHolder::updateIsOverThreshold() { isOverThreshold = (currentValue > threshold) ? true : false; }
 //==============================================================================
 TextMeter::TextMeter() : cachedValueDb(NEGATIVE_INFINITY)
 {
