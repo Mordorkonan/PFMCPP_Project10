@@ -62,7 +62,7 @@ float ValueHolder::getHeldValue() const { return heldValue; }
 
 bool ValueHolder::getIsOverThreshold() const { return isOverThreshold; }
 //==============================================================================
-TextMeter::TextMeter()
+TextMeter::TextMeter() : cachedValueDb(NEGATIVE_INFINITY)
 {
     valueHolder.setThreshold(0);
     valueHolder.updateHeldValue(NEGATIVE_INFINITY);
@@ -99,7 +99,7 @@ void TextMeter::paint(juce::Graphics& g)
     g.setColour(textColor);
     g.setFont(12);
 
-    g.drawFittedText((valueToDisplay > NEGATIVE_INFINITY) ? juce::String(valueToDisplay) : juce::String("-inf"), 
+    g.drawFittedText((valueToDisplay > NEGATIVE_INFINITY) ? juce::String(valueToDisplay, 1) : juce::String("-inf"), 
                      getLocalBounds(), 
                      juce::Justification::centred, 
                      1);
@@ -111,6 +111,7 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
     addAndMakeVisible(meter);
+    addAndMakeVisible(textMeter);
     addAndMakeVisible(dbScale);
 
     startTimerHz(60);
@@ -216,6 +217,7 @@ void PFMCPP_Project10AudioProcessorEditor::timerCallback()
         }
         auto magDb = juce::Decibels::gainToDecibels(buffer.getMagnitude(0, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
         meter.update(magDb);
+        textMeter.update(magDb);
     }
 }
 
@@ -226,9 +228,10 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     auto bounds = getLocalBounds();
     //meter.setBounds(15, 45, 20, bounds.getHeight() - 30);
     meter.setBounds(15,
-                    JUCE_LIVE_CONSTANT(15),
-                    20,
-                    JUCE_LIVE_CONSTANT(getHeight() - 30));
+                    JUCE_LIVE_CONSTANT(25),
+                    25,
+                    JUCE_LIVE_CONSTANT(getHeight() - 50));
+    textMeter.setBounds(meter.getX(), meter.getY() - 20, meter.getWidth(), 16);
     dbScale.setBounds(meter.getRight(), 0, meter.getWidth() + 10, getHeight());
     dbScale.buildBackgroundImage(6, meter.getBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
 }

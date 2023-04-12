@@ -92,6 +92,7 @@ private:
 
     juce::AudioBuffer<float> buffer;
     Meter meter;
+    TextMeter textMeter;
     DbScale dbScale;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)
