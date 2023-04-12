@@ -8,7 +8,59 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+//==============================================================================
+ValueHolder::ValueHolder() : timeOfPeak(juce::Time::currentTimeMillis())
+{
+    startTimerHz(60);
+}
 
+ValueHolder::~ValueHolder()
+{
+    stopTimer();
+}
+
+void ValueHolder::timerCallback()
+{
+    juce::int64 now = juce::Time::currentTimeMillis();
+    juce::int64 elapsed = now - timeOfPeak;
+    if (elapsed > durationToHoldForMs)
+    {
+        isOverThreshold = (currentValue > threshold) ? true : false;
+        if (!isOverThreshold)
+        {
+            heldValue = NEGATIVE_INFINITY;
+        }
+    }
+}
+
+void ValueHolder::setThreshold(float th)
+{
+    threshold = th;
+    isOverThreshold = (currentValue > threshold) ? true : false;
+}
+
+void ValueHolder::updateHeldValue(float v)
+{
+    if (v > threshold)
+    {
+        isOverThreshold = true;
+        timeOfPeak = juce::Time::currentTimeMillis();
+        if (v > heldValue)
+        {
+            heldValue = v;
+        }
+    }
+    
+    currentValue = v;
+}
+
+void ValueHolder::setHoldTime(int ms) { durationToHoldForMs = ms; }
+
+float ValueHolder::getCurrentValue() const { return currentValue; }
+
+float ValueHolder::getHeldValue() const { return heldValue; }
+
+bool ValueHolder::getIsOverThreshold() const { return isOverThreshold; }
 //==============================================================================
 PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMCPP_Project10AudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
