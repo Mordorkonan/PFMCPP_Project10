@@ -62,6 +62,17 @@ private:
     bool isOverThreshold{ false };
 };
 
+struct TextMeter : juce::Component
+{
+    TextMeter();
+    void paint(juce::Graphics& g) override;
+    ///expects a decibel value
+    void update(float valueDb);
+private:
+    float cachedValueDb;
+    ValueHolder valueHolder;
+};
+
 class PFMCPP_Project10AudioProcessorEditor  : public juce::AudioProcessorEditor,
                                               public juce::Timer
 {

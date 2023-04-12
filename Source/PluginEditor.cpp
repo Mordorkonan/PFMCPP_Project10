@@ -62,6 +62,49 @@ float ValueHolder::getHeldValue() const { return heldValue; }
 
 bool ValueHolder::getIsOverThreshold() const { return isOverThreshold; }
 //==============================================================================
+TextMeter::TextMeter()
+{
+    valueHolder.setThreshold(0);
+    valueHolder.updateHeldValue(NEGATIVE_INFINITY);
+}
+
+void TextMeter::update(float valueDb)
+{
+    cachedValueDb = valueDb;
+    valueHolder.updateHeldValue(cachedValueDb);
+    repaint();
+}
+
+void TextMeter::paint(juce::Graphics& g)
+{
+    auto bounds = getLocalBounds();
+    juce::Colour textColor { juce::Colours::white };
+    auto valueToDisplay = NEGATIVE_INFINITY;
+
+    if (valueHolder.getIsOverThreshold())
+    {
+        g.setColour(juce::Colours::red);
+        g.fillAll();
+        textColor = juce::Colours::black;
+        valueToDisplay = valueHolder.getHeldValue();
+    }
+    else
+    {
+        g.setColour(juce::Colours::black);
+        g.fillAll();
+        textColor = juce::Colours::white;
+        valueToDisplay = valueHolder.getCurrentValue();
+    }
+
+    g.setColour(textColor);
+    g.setFont(12);
+
+    g.drawFittedText((valueToDisplay > NEGATIVE_INFINITY) ? juce::String(valueToDisplay) : juce::String("-inf"), 
+                     getLocalBounds(), 
+                     juce::Justification::centred, 
+                     1);
+}
+//==============================================================================
 PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMCPP_Project10AudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
