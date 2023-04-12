@@ -42,6 +42,37 @@ private:
     juce::Image bkgd;
 };
 
+struct ValueHolder : juce::Timer
+{
+    ValueHolder();
+    ~ValueHolder();
+    void timerCallback() override;
+    void setThreshold(float th);
+    void updateHeldValue(float v);
+    void setHoldTime(int ms);
+    float getCurrentValue() const;
+    float getHeldValue() const;
+    bool getIsOverThreshold() const;
+private:
+    float threshold = 0;
+    float currentValue = NEGATIVE_INFINITY;
+    float heldValue = NEGATIVE_INFINITY;
+    juce::int64 timeOfPeak;
+    int durationToHoldForMs{ 500 };
+    bool isOverThreshold{ false };
+};
+
+struct TextMeter : juce::Component
+{
+    TextMeter();
+    void paint(juce::Graphics& g) override;
+    ///expects a decibel value
+    void update(float valueDb);
+private:
+    float cachedValueDb;
+    ValueHolder valueHolder;
+};
+
 class PFMCPP_Project10AudioProcessorEditor  : public juce::AudioProcessorEditor,
                                               public juce::Timer
 {
@@ -61,6 +92,7 @@ private:
 
     juce::AudioBuffer<float> buffer;
     Meter meter;
+    TextMeter textMeter;
     DbScale dbScale;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)

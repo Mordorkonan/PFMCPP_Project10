@@ -8,7 +8,106 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+//==============================================================================
+ValueHolder::ValueHolder() : timeOfPeak(juce::Time::currentTimeMillis())
+{
+    startTimerHz(60);
+}
 
+ValueHolder::~ValueHolder()
+{
+    stopTimer();
+}
+
+void ValueHolder::timerCallback()
+{
+    juce::int64 now = juce::Time::currentTimeMillis();
+    if (now - timeOfPeak > durationToHoldForMs)
+    {
+        isOverThreshold = (currentValue > threshold) ? true : false;
+        if (!isOverThreshold)
+        {
+            heldValue = NEGATIVE_INFINITY;
+        }
+    }
+}
+
+void ValueHolder::setThreshold(float th)
+{
+    threshold = th;
+    juce::int64 now = juce::Time::currentTimeMillis();
+    if (now - timeOfPeak > durationToHoldForMs)
+    {
+        isOverThreshold = (currentValue > threshold) ? true : false;
+    }
+}
+
+void ValueHolder::updateHeldValue(float v)
+{
+    if (v > threshold)
+    {
+        isOverThreshold = true;
+        timeOfPeak = juce::Time::currentTimeMillis();
+        if (v > heldValue)
+        {
+            heldValue = v;
+        }
+    }
+    
+    currentValue = v;
+}
+
+void ValueHolder::setHoldTime(int ms) { durationToHoldForMs = ms; }
+
+float ValueHolder::getCurrentValue() const { return currentValue; }
+
+float ValueHolder::getHeldValue() const { return heldValue; }
+
+bool ValueHolder::getIsOverThreshold() const { return isOverThreshold; }
+//==============================================================================
+TextMeter::TextMeter() : cachedValueDb(NEGATIVE_INFINITY)
+{
+    valueHolder.setThreshold(0);
+    valueHolder.updateHeldValue(NEGATIVE_INFINITY);
+}
+
+void TextMeter::update(float valueDb)
+{
+    cachedValueDb = valueDb;
+    valueHolder.updateHeldValue(cachedValueDb);
+    repaint();
+}
+
+void TextMeter::paint(juce::Graphics& g)
+{
+    auto bounds = getLocalBounds();
+    juce::Colour textColor { juce::Colours::white };
+    auto valueToDisplay = NEGATIVE_INFINITY;
+    valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
+
+    if (valueHolder.getIsOverThreshold())
+    {
+        g.setColour(juce::Colours::red);
+        g.fillAll();
+        textColor = juce::Colours::black;
+        valueToDisplay = valueHolder.getHeldValue();
+    }
+    else
+    {
+        g.setColour(juce::Colours::black);
+        g.fillAll();
+        textColor = juce::Colours::white;
+        valueToDisplay = valueHolder.getCurrentValue();
+    }
+
+    g.setColour(textColor);
+    g.setFont(12);
+
+    g.drawFittedText((valueToDisplay > NEGATIVE_INFINITY) ? juce::String(valueToDisplay, 1) : juce::String("-inf"), 
+                     getLocalBounds(), 
+                     juce::Justification::centred, 
+                     1);
+}
 //==============================================================================
 PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMCPP_Project10AudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
@@ -16,6 +115,7 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
     addAndMakeVisible(meter);
+    addAndMakeVisible(textMeter);
     addAndMakeVisible(dbScale);
 
     startTimerHz(60);
@@ -121,6 +221,7 @@ void PFMCPP_Project10AudioProcessorEditor::timerCallback()
         }
         auto magDb = juce::Decibels::gainToDecibels(buffer.getMagnitude(0, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
         meter.update(magDb);
+        textMeter.update(magDb);
     }
 }
 
@@ -131,9 +232,10 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     auto bounds = getLocalBounds();
     //meter.setBounds(15, 45, 20, bounds.getHeight() - 30);
     meter.setBounds(15,
-                    JUCE_LIVE_CONSTANT(15),
-                    20,
-                    JUCE_LIVE_CONSTANT(getHeight() - 30));
+                    JUCE_LIVE_CONSTANT(25),
+                    25,
+                    JUCE_LIVE_CONSTANT(getHeight() - 50));
+    textMeter.setBounds(meter.getX(), meter.getY() - 20, meter.getWidth(), 16);
     dbScale.setBounds(meter.getRight(), 0, meter.getWidth() + 10, getHeight());
     dbScale.buildBackgroundImage(6, meter.getBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
 }
