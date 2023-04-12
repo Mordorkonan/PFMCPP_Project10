@@ -22,8 +22,7 @@ ValueHolder::~ValueHolder()
 void ValueHolder::timerCallback()
 {
     juce::int64 now = juce::Time::currentTimeMillis();
-    juce::int64 elapsed = now - timeOfPeak;
-    if (elapsed > durationToHoldForMs)
+    if (now - timeOfPeak > durationToHoldForMs)
     {
         isOverThreshold = (currentValue > threshold) ? true : false;
         if (!isOverThreshold)
@@ -36,7 +35,11 @@ void ValueHolder::timerCallback()
 void ValueHolder::setThreshold(float th)
 {
     threshold = th;
-    isOverThreshold = (currentValue > threshold) ? true : false;
+    juce::int64 now = juce::Time::currentTimeMillis();
+    if (now - timeOfPeak > durationToHoldForMs)
+    {
+        isOverThreshold = (currentValue > threshold) ? true : false;
+    }
 }
 
 void ValueHolder::updateHeldValue(float v)
@@ -80,6 +83,7 @@ void TextMeter::paint(juce::Graphics& g)
     auto bounds = getLocalBounds();
     juce::Colour textColor { juce::Colours::white };
     auto valueToDisplay = NEGATIVE_INFINITY;
+    valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
 
     if (valueHolder.getIsOverThreshold())
     {
