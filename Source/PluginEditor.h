@@ -46,7 +46,7 @@ struct DecayingValueHolder : juce::Timer
 
     float getCurrentValue() const;
     bool isOverThreshold() const;
-
+    void setThreshold(float th);
     void setHoldTime(int ms);
     void setDecayRate(float dbPerSec);
 

@@ -113,6 +113,8 @@ float DecayingValueHolder::getCurrentValue() const { return currentValue; }
 
 bool DecayingValueHolder::isOverThreshold() const { return (currentValue > threshold) ? true : false; }
 
+void DecayingValueHolder::setThreshold(float th) { threshold = th; }
+
 void DecayingValueHolder::setDecayRate(float dbPerSec) { decayRatePerFrame = dbPerSec / frameRate; }
 
 void DecayingValueHolder::setHoldTime(int ms) { holdTime = ms; }
@@ -207,6 +209,7 @@ void Meter::paint(juce::Graphics& g)
     g.fillRect(bounds.withY(remappedPeakDb).withBottom(bounds.getBottom()));
     // i like this implementation more, especially the last string in this function
 
+    decayingValueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
     g.setColour(decayingValueHolder.isOverThreshold() ? Colours::red : Colours::orange);
 
     float remappedTick = jmap<float>(decayingValueHolder.getCurrentValue(), NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY());
