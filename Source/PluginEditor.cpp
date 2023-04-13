@@ -72,6 +72,7 @@ void ValueHolder::updateIsOverThreshold() { isOverThreshold = (currentValue > th
 DecayingValueHolder::DecayingValueHolder() : decayRateMultiplier(3)
 {
     startTimerHz(frameRate);
+    setDecayRate(3);
 }
 
 DecayingValueHolder::~DecayingValueHolder()
@@ -97,7 +98,7 @@ void DecayingValueHolder::timerCallback()
                                            MAX_DECIBELS,
                                            currentValue - decayRatePerFrame * decayRateMultiplier);
     
-        decayRateMultiplier += 0.2f;
+        decayRateMultiplier++;
     }
 
     if (currentValue <= NEGATIVE_INFINITY)
@@ -189,7 +190,7 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
     g.setFont (15.0f);
     g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
 }
-
+//==============================================================================
 void Meter::paint(juce::Graphics& g)
 {
     using namespace juce;
@@ -205,11 +206,17 @@ void Meter::paint(juce::Graphics& g)
     g.setColour(Colours::white);
     g.fillRect(bounds.withY(remappedPeakDb).withBottom(bounds.getBottom()));
     // i like this implementation more, especially the last string in this function
+
+    g.setColour(decayingValueHolder.isOverThreshold() ? Colours::red : Colours::orange);
+
+    float remappedTick = jmap<float>(decayingValueHolder.getCurrentValue(), NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY());
+    g.fillRect(bounds.withY(remappedTick).withHeight(4));
 }
 
 void Meter::update(float dbLevel)
 {
     peakDb = dbLevel;
+    decayingValueHolder.updateHeldValue(peakDb);
     repaint();
 }
 
