@@ -41,7 +41,7 @@ struct DbScale : juce::Component
 private:
     juce::Image bkgd;
 };
-
+//==============================================================================
 struct ValueHolder : juce::Timer
 {
     ValueHolder();
@@ -62,7 +62,34 @@ private:
     int durationToHoldForMs{ 500 };
     bool isOverThreshold{ false };
 };
+//==============================================================================
+struct DecayingValueHolder : juce::Timer
+{
+    DecayingValueHolder();
+    ~DecayingValueHolder();
 
+    void updateHeldValue(float input);
+
+    float getCurrentValue() const;
+    bool isOverThreshold() const;
+
+    void setHoldTime(int ms);
+    void setDecayRate(float dbPerSec);
+
+    void timerCallback() override;
+private:
+    float currentValue{ NEGATIVE_INFINITY };
+    int frameRate{ 60 };
+    juce::int64 peakTime = getNow();
+    float threshold = 0.f;
+    juce::int64 holdTime = 2000; //2 seconds
+    float decayRatePerFrame{ 0 };
+    float decayRateMultiplier{ 1 };
+
+    static juce::int64 getNow();
+    void resetDecayRateMultiplier();
+};
+//==============================================================================
 struct TextMeter : juce::Component
 {
     TextMeter();
@@ -73,7 +100,7 @@ private:
     float cachedValueDb;
     ValueHolder valueHolder;
 };
-
+//==============================================================================
 class PFMCPP_Project10AudioProcessorEditor  : public juce::AudioProcessorEditor,
                                               public juce::Timer
 {

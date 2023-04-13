@@ -69,6 +69,55 @@ bool ValueHolder::getIsOverThreshold() const { return isOverThreshold; }
 
 void ValueHolder::updateIsOverThreshold() { isOverThreshold = (currentValue > threshold) ? true : false; }
 //==============================================================================
+DecayingValueHolder::DecayingValueHolder() : decayRateMultiplier(3)
+{
+    startTimerHz(frameRate);
+}
+
+DecayingValueHolder::~DecayingValueHolder()
+{
+    stopTimer();
+}
+
+void DecayingValueHolder::updateHeldValue(float input)
+{
+    if (input > currentValue)
+    {
+        peakTime = getNow();
+        currentValue = input;
+        resetDecayRateMultiplier();
+    }
+}
+
+void DecayingValueHolder::timerCallback()
+{
+    if (getNow() - peakTime > holdTime)
+    {
+        currentValue = juce::jlimit<float>(NEGATIVE_INFINITY,
+                                           MAX_DECIBELS,
+                                           currentValue - decayRatePerFrame * decayRateMultiplier);
+    
+        decayRateMultiplier += 0.2f;
+    }
+
+    if (currentValue <= NEGATIVE_INFINITY)
+    {
+        resetDecayRateMultiplier();
+    }
+}
+
+juce::int64 DecayingValueHolder::getNow() { return juce::Time::currentTimeMillis(); }
+
+float DecayingValueHolder::getCurrentValue() const { return currentValue; }
+
+bool DecayingValueHolder::isOverThreshold() const { return (currentValue > threshold) ? true : false; }
+
+void DecayingValueHolder::setDecayRate(float dbPerSec) { decayRatePerFrame = dbPerSec / frameRate; }
+
+void DecayingValueHolder::setHoldTime(int ms) { holdTime = ms; }
+
+void DecayingValueHolder::resetDecayRateMultiplier() { decayRateMultiplier = 1; }
+//==============================================================================
 TextMeter::TextMeter() : cachedValueDb(NEGATIVE_INFINITY)
 {
     valueHolder.setThreshold(0);
