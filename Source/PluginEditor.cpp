@@ -19,6 +19,14 @@ ValueHolderBase::~ValueHolderBase()
     stopTimer();
 }
 
+void ValueHolderBase::timerCallback()
+{
+    if (getNow() - peakTime > holdTime)
+    {
+        outerTimerCallback();
+    }
+}
+
 float ValueHolderBase::getCurrentValue() const { return currentValue; }
 
 bool ValueHolderBase::getIsOverThreshold() const { return (currentValue > threshold) ? true : false; }
@@ -26,8 +34,6 @@ bool ValueHolderBase::getIsOverThreshold() const { return (currentValue > thresh
 void ValueHolderBase::setHoldTime(int ms) { holdTime = ms; }
 
 void ValueHolderBase::setThreshold(float th) { threshold = th; }
-
-void ValueHolderBase::timerCallback() { }
 
 void ValueHolderBase::updateHeldValue(float v) { }
 
@@ -41,31 +47,26 @@ ValueHolder::ValueHolder() { holdTime = 500; }
 
 ValueHolder::~ValueHolder() = default;
 
-void ValueHolder::timerCallback()
-{
-    if (getNow() - peakTime > holdTime)
-    {
-
-        if (!getIsOverThreshold())
-        {
-            heldValue = NEGATIVE_INFINITY;
-        }
-    }
-}
 void ValueHolder::updateHeldValue(float v)
 {
     currentValue = v;
 
     if (getIsOverThreshold())
     {
-        //isOverThreshold = true;
         peakTime = getNow();
         if (v > heldValue)
         {
             heldValue = v;
         }
+    }    
+}
+
+void ValueHolder::outerTimerCallback()
+{
+    if (!getIsOverThreshold())
+    {
+        heldValue = NEGATIVE_INFINITY;
     }
-    
 }
 
 float ValueHolder::getHeldValue() const { return heldValue; }
@@ -89,19 +90,21 @@ void DecayingValueHolder::updateHeldValue(float v)
 
 void DecayingValueHolder::timerCallback()
 {
-    if (getNow() - peakTime > holdTime)
-    {
-        currentValue = juce::jlimit<float>(NEGATIVE_INFINITY,
-                                           MAX_DECIBELS,
-                                           currentValue - decayRatePerFrame * decayRateMultiplier);
-    
-        decayRateMultiplier++;
-    }
+    ValueHolderBase::timerCallback();
 
     if (currentValue <= NEGATIVE_INFINITY)
     {
         resetDecayRateMultiplier();
     }
+}
+
+void DecayingValueHolder::outerTimerCallback()
+{
+    currentValue = juce::jlimit<float>(NEGATIVE_INFINITY,
+        MAX_DECIBELS,
+        currentValue - decayRatePerFrame * decayRateMultiplier);
+
+    decayRateMultiplier++;
 }
 
 void DecayingValueHolder::setDecayRate(float dbPerSec) { decayRatePerFrame = dbPerSec / frameRate; }

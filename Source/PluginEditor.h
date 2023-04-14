@@ -21,8 +21,9 @@ struct ValueHolderBase : juce::Timer
     ValueHolderBase();
     virtual ~ValueHolderBase();
 
-    virtual void timerCallback() override;
     virtual void updateHeldValue(float v);
+    virtual void timerCallback() override;
+    virtual void outerTimerCallback() = 0;
     void setThreshold(float th);
     void setHoldTime(int ms);
     float getCurrentValue() const;
@@ -44,8 +45,9 @@ struct ValueHolder : ValueHolderBase
 {
     ValueHolder();
     ~ValueHolder();
-    void timerCallback() override;
+    void outerTimerCallback() override;
     void updateHeldValue(float v) override;
+
     float getHeldValue() const;
 
 private:
@@ -57,9 +59,11 @@ struct DecayingValueHolder : ValueHolderBase
     DecayingValueHolder();
     ~DecayingValueHolder();
 
-    void updateHeldValue(float v) override;
-    void setDecayRate(float dbPerSec);
     void timerCallback() override;
+    void outerTimerCallback() override;
+    void updateHeldValue(float v) override;
+
+    void setDecayRate(float dbPerSec);
 
 private:
     float decayRatePerFrame{ 0 };
