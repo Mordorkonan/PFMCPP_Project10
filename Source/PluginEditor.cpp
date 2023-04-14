@@ -43,30 +43,15 @@ ValueHolder::~ValueHolder() = default;
 
 void ValueHolder::timerCallback()
 {
-    //juce::int64 now = juce::Time::currentTimeMillis();
     if (getNow() - peakTime > holdTime)
     {
-        //isOverThreshold = (currentValue > threshold) ? true : false;
-        //updateIsOverThreshold();
+
         if (!getIsOverThreshold())
         {
             heldValue = NEGATIVE_INFINITY;
         }
     }
 }
-/*
-void ValueHolder::setThreshold(float th)
-{
-    //threshold = th;
-    ValueHolderBase::setThreshold(th);
-    //juce::int64 now = juce::Time::currentTimeMillis();
-    if (getNow() - peakTime > holdTime)
-    {
-        //isOverThreshold = (currentValue > threshold) ? true : false;
-        updateIsOverThreshold();
-    }
-}
-*/
 void ValueHolder::updateHeldValue(float v)
 {
     currentValue = v;
@@ -83,15 +68,7 @@ void ValueHolder::updateHeldValue(float v)
     
 }
 
-//void ValueHolder::setHoldTime(int ms) { durationToHoldForMs = ms; }
-
-//float ValueHolder::getCurrentValue() const { return currentValue; }
-
 float ValueHolder::getHeldValue() const { return heldValue; }
-
-//bool ValueHolder::getIsOverThreshold() const { return isOverThreshold; }
-
-//void ValueHolder::updateIsOverThreshold() { isOverThreshold = (currentValue > threshold) ? true : false; }
 //==============================================================================
 DecayingValueHolder::DecayingValueHolder() : decayRateMultiplier(3)
 {
@@ -127,17 +104,7 @@ void DecayingValueHolder::timerCallback()
     }
 }
 
-//juce::int64 DecayingValueHolder::getNow() { return juce::Time::currentTimeMillis(); }
-
-//float DecayingValueHolder::getCurrentValue() const { return currentValue; }
-
-//bool DecayingValueHolder::isOverThreshold() const { return (currentValue > threshold) ? true : false; }
-
-//void DecayingValueHolder::setThreshold(float th) { threshold = th; }
-
 void DecayingValueHolder::setDecayRate(float dbPerSec) { decayRatePerFrame = dbPerSec / frameRate; }
-
-//void DecayingValueHolder::setHoldTime(int ms) { holdTime = ms; }
 
 void DecayingValueHolder::resetDecayRateMultiplier() { decayRateMultiplier = 1; }
 //==============================================================================
@@ -273,8 +240,6 @@ void DbScale::buildBackgroundImage(int dbDivision, juce::Rectangle<int> meterBou
             getHeight() / ((maxDb - minDb) / dbDivision),
             juce::Justification::centred, 1);
     }
-
-    //repaint();
 }
 
 std::vector<Tick> DbScale::getTicks(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb)
