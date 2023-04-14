@@ -9,83 +9,103 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 //==============================================================================
-ValueHolder::ValueHolder() : timeOfPeak(juce::Time::currentTimeMillis())
+ValueHolderBase::ValueHolderBase()
 {
-    startTimerHz(60);
+    startTimerHz(frameRate);
 }
 
-ValueHolder::~ValueHolder()
+ValueHolderBase::~ValueHolderBase()
 {
     stopTimer();
 }
 
+float ValueHolderBase::getCurrentValue() const { return currentValue; }
+
+bool ValueHolderBase::getIsOverThreshold() const { return (currentValue > threshold) ? true : false; }
+
+void ValueHolderBase::setHoldTime(int ms) { holdTime = ms; }
+
+void ValueHolderBase::setThreshold(float th) { threshold = th; }
+
+void ValueHolderBase::timerCallback() { }
+
+void ValueHolderBase::updateHeldValue(float v) { }
+
+juce::int64 ValueHolderBase::getNow() { return juce::Time::currentTimeMillis(); }
+
+juce::int64 ValueHolderBase::getPeakTime() const { return peakTime; }
+
+juce::int64 ValueHolderBase::getHoldTime() const { return holdTime; }
+//==============================================================================
+ValueHolder::ValueHolder() { holdTime = 500; }
+
+ValueHolder::~ValueHolder() = default;
+
 void ValueHolder::timerCallback()
 {
-    juce::int64 now = juce::Time::currentTimeMillis();
-    if (now - timeOfPeak > durationToHoldForMs)
+    //juce::int64 now = juce::Time::currentTimeMillis();
+    if (getNow() - peakTime > holdTime)
     {
         //isOverThreshold = (currentValue > threshold) ? true : false;
-        updateIsOverThreshold();
-        if (!isOverThreshold)
+        //updateIsOverThreshold();
+        if (!getIsOverThreshold())
         {
             heldValue = NEGATIVE_INFINITY;
         }
     }
 }
-
+/*
 void ValueHolder::setThreshold(float th)
 {
-    threshold = th;
-    juce::int64 now = juce::Time::currentTimeMillis();
-    if (now - timeOfPeak > durationToHoldForMs)
+    //threshold = th;
+    ValueHolderBase::setThreshold(th);
+    //juce::int64 now = juce::Time::currentTimeMillis();
+    if (getNow() - peakTime > holdTime)
     {
         //isOverThreshold = (currentValue > threshold) ? true : false;
         updateIsOverThreshold();
     }
 }
-
+*/
 void ValueHolder::updateHeldValue(float v)
 {
-    if (v > threshold)
+    currentValue = v;
+
+    if (getIsOverThreshold())
     {
-        isOverThreshold = true;
-        timeOfPeak = juce::Time::currentTimeMillis();
+        //isOverThreshold = true;
+        peakTime = getNow();
         if (v > heldValue)
         {
             heldValue = v;
         }
     }
     
-    currentValue = v;
 }
 
-void ValueHolder::setHoldTime(int ms) { durationToHoldForMs = ms; }
+//void ValueHolder::setHoldTime(int ms) { durationToHoldForMs = ms; }
 
-float ValueHolder::getCurrentValue() const { return currentValue; }
+//float ValueHolder::getCurrentValue() const { return currentValue; }
 
 float ValueHolder::getHeldValue() const { return heldValue; }
 
-bool ValueHolder::getIsOverThreshold() const { return isOverThreshold; }
+//bool ValueHolder::getIsOverThreshold() const { return isOverThreshold; }
 
-void ValueHolder::updateIsOverThreshold() { isOverThreshold = (currentValue > threshold) ? true : false; }
+//void ValueHolder::updateIsOverThreshold() { isOverThreshold = (currentValue > threshold) ? true : false; }
 //==============================================================================
 DecayingValueHolder::DecayingValueHolder() : decayRateMultiplier(3)
 {
-    startTimerHz(frameRate);
     setDecayRate(3);
 }
 
-DecayingValueHolder::~DecayingValueHolder()
-{
-    stopTimer();
-}
+DecayingValueHolder::~DecayingValueHolder() = default;
 
-void DecayingValueHolder::updateHeldValue(float input)
+void DecayingValueHolder::updateHeldValue(float v)
 {
-    if (input > currentValue)
+    if (v > currentValue)
     {
         peakTime = getNow();
-        currentValue = input;
+        currentValue = v;
         resetDecayRateMultiplier();
     }
 }
@@ -107,17 +127,17 @@ void DecayingValueHolder::timerCallback()
     }
 }
 
-juce::int64 DecayingValueHolder::getNow() { return juce::Time::currentTimeMillis(); }
+//juce::int64 DecayingValueHolder::getNow() { return juce::Time::currentTimeMillis(); }
 
-float DecayingValueHolder::getCurrentValue() const { return currentValue; }
+//float DecayingValueHolder::getCurrentValue() const { return currentValue; }
 
-bool DecayingValueHolder::isOverThreshold() const { return (currentValue > threshold) ? true : false; }
+//bool DecayingValueHolder::isOverThreshold() const { return (currentValue > threshold) ? true : false; }
 
-void DecayingValueHolder::setThreshold(float th) { threshold = th; }
+//void DecayingValueHolder::setThreshold(float th) { threshold = th; }
 
 void DecayingValueHolder::setDecayRate(float dbPerSec) { decayRatePerFrame = dbPerSec / frameRate; }
 
-void DecayingValueHolder::setHoldTime(int ms) { holdTime = ms; }
+//void DecayingValueHolder::setHoldTime(int ms) { holdTime = ms; }
 
 void DecayingValueHolder::resetDecayRateMultiplier() { decayRateMultiplier = 1; }
 //==============================================================================
@@ -140,21 +160,24 @@ void TextMeter::paint(juce::Graphics& g)
     juce::Colour textColor { juce::Colours::white };
     auto valueToDisplay = NEGATIVE_INFINITY;
     valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
+    auto now = ValueHolder::getNow();
 
-    if (valueHolder.getIsOverThreshold())
-    {
-        g.setColour(juce::Colours::red);
-        g.fillAll();
-        textColor = juce::Colours::black;
-        valueToDisplay = valueHolder.getHeldValue();
-    }
-    else
-    {
-        g.setColour(juce::Colours::black);
-        g.fillAll();
-        textColor = juce::Colours::white;
-        valueToDisplay = valueHolder.getCurrentValue();
-    }
+        if  (valueHolder.getIsOverThreshold() || 
+            (now - valueHolder.getPeakTime() < valueHolder.getHoldTime()) &&
+             valueHolder.getPeakTime() > valueHolder.getHoldTime())     // for plugin launch
+        {   
+            g.setColour(juce::Colours::red);
+            g.fillAll();
+            textColor = juce::Colours::black;
+            valueToDisplay = valueHolder.getHeldValue();
+        }
+        else
+        {
+            g.setColour(juce::Colours::black);
+            g.fillAll();
+            textColor = juce::Colours::white;
+            valueToDisplay = valueHolder.getCurrentValue();
+        }
 
     g.setColour(textColor);
     g.setFont(12);
@@ -210,7 +233,7 @@ void Meter::paint(juce::Graphics& g)
     // i like this implementation more, especially the last string in this function
 
     decayingValueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
-    g.setColour(decayingValueHolder.isOverThreshold() ? Colours::red : Colours::orange);
+    g.setColour(decayingValueHolder.getIsOverThreshold() ? Colours::red : Colours::orange);
 
     float remappedTick = jmap<float>(decayingValueHolder.getCurrentValue(), NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY());
     g.fillRect(bounds.withY(remappedTick).withHeight(4));

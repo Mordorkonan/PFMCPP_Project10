@@ -16,51 +16,75 @@
 //==============================================================================
 /**
 */
-struct ValueHolder : juce::Timer
+struct ValueHolderBase : juce::Timer
+{
+    ValueHolderBase();
+    virtual ~ValueHolderBase();
+
+    virtual void timerCallback() override;
+    virtual void updateHeldValue(float v);
+    void setThreshold(float th);
+    void setHoldTime(int ms);
+    float getCurrentValue() const;
+    bool getIsOverThreshold() const;
+
+    juce::int64 getPeakTime() const;
+    juce::int64 getHoldTime() const;
+    static juce::int64 getNow();
+
+protected:
+    int frameRate = 60;
+    float threshold = 0.0f;
+    float currentValue = NEGATIVE_INFINITY;
+    juce::int64 peakTime = 0;   // 0 to prevent red textmeter at launch
+    juce::int64 holdTime = 2000;
+};
+//==============================================================================
+struct ValueHolder : ValueHolderBase
 {
     ValueHolder();
     ~ValueHolder();
     void timerCallback() override;
-    void setThreshold(float th);
-    void updateHeldValue(float v);
-    void setHoldTime(int ms);
-    float getCurrentValue() const;
+    //void setThreshold(float th) override;
+    void updateHeldValue(float v) override;
+    //void setHoldTime(int ms);
+    //float getCurrentValue() const;
     float getHeldValue() const;
-    bool getIsOverThreshold() const;
-    void updateIsOverThreshold();
+    //bool getIsOverThreshold() const;
+    //void updateIsOverThreshold();
 private:
-    float threshold = 0;
-    float currentValue = NEGATIVE_INFINITY;
+    //float threshold = 0;
+    //float currentValue = NEGATIVE_INFINITY;
     float heldValue = NEGATIVE_INFINITY;
-    juce::int64 timeOfPeak;
-    int durationToHoldForMs{ 500 };
-    bool isOverThreshold{ false };
+    //juce::int64 timeOfPeak;
+    //int durationToHoldForMs{ 500 };
+    //bool isOverThreshold{ false };
 };
 //==============================================================================
-struct DecayingValueHolder : juce::Timer
+struct DecayingValueHolder : ValueHolderBase
 {
     DecayingValueHolder();
     ~DecayingValueHolder();
 
-    void updateHeldValue(float input);
+    void updateHeldValue(float v) override;
 
-    float getCurrentValue() const;
-    bool isOverThreshold() const;
-    void setThreshold(float th);
-    void setHoldTime(int ms);
+    //float getCurrentValue() const;
+    //bool isOverThreshold() const;
+    //void setThreshold(float th);
+    //void setHoldTime(int ms);
     void setDecayRate(float dbPerSec);
 
     void timerCallback() override;
 private:
-    float currentValue{ NEGATIVE_INFINITY };
-    int frameRate{ 60 };
-    juce::int64 peakTime = getNow();
-    float threshold = 0.f;
-    juce::int64 holdTime = 2000; //2 seconds
+    //float currentValue{ NEGATIVE_INFINITY };
+    //int frameRate{ 60 };
+    //juce::int64 peakTime = getNow();
+    //float threshold = 0.f;
+    //juce::int64 holdTime = 2000; //2 seconds
     float decayRatePerFrame{ 0 };
     float decayRateMultiplier{ 1 };
 
-    static juce::int64 getNow();
+    //static juce::int64 getNow();
     void resetDecayRateMultiplier();
 };
 //==============================================================================
