@@ -21,7 +21,7 @@ struct ValueHolderBase : juce::Timer
     ValueHolderBase();
     virtual ~ValueHolderBase();
 
-    virtual void updateHeldValue(float v);
+    virtual void updateHeldValue(float v) = 0;
     virtual void timerCallback() override;
     virtual void timerCallbackImpl() = 0;
     void setThreshold(float th);

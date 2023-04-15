@@ -35,8 +35,6 @@ void ValueHolderBase::setHoldTime(int ms) { holdTime = ms; }
 
 void ValueHolderBase::setThreshold(float th) { threshold = th; }
 
-void ValueHolderBase::updateHeldValue(float v) { }
-
 juce::int64 ValueHolderBase::getNow() { return juce::Time::currentTimeMillis(); }
 
 juce::int64 ValueHolderBase::getPeakTime() const { return peakTime; }
