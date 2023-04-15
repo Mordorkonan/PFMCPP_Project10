@@ -9,61 +9,100 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 //==============================================================================
-ValueHolder::ValueHolder() : timeOfPeak(juce::Time::currentTimeMillis())
+ValueHolderBase::ValueHolderBase()
 {
-    startTimerHz(60);
+    startTimerHz(frameRate);
 }
 
-ValueHolder::~ValueHolder()
+ValueHolderBase::~ValueHolderBase()
 {
     stopTimer();
 }
 
-void ValueHolder::timerCallback()
+void ValueHolderBase::timerCallback()
 {
-    juce::int64 now = juce::Time::currentTimeMillis();
-    if (now - timeOfPeak > durationToHoldForMs)
+    if (getNow() - peakTime > holdTime)
     {
-        isOverThreshold = (currentValue > threshold) ? true : false;
-        if (!isOverThreshold)
-        {
-            heldValue = NEGATIVE_INFINITY;
-        }
+        timerCallbackImpl();
     }
 }
 
-void ValueHolder::setThreshold(float th)
-{
-    threshold = th;
-    juce::int64 now = juce::Time::currentTimeMillis();
-    if (now - timeOfPeak > durationToHoldForMs)
-    {
-        isOverThreshold = (currentValue > threshold) ? true : false;
-    }
-}
+float ValueHolderBase::getCurrentValue() const { return currentValue; }
+
+bool ValueHolderBase::getIsOverThreshold() const { return currentValue > threshold; }
+
+void ValueHolderBase::setHoldTime(int ms) { holdTime = ms; }
+
+void ValueHolderBase::setThreshold(float th) { threshold = th; }
+
+juce::int64 ValueHolderBase::getNow() { return juce::Time::currentTimeMillis(); }
+
+juce::int64 ValueHolderBase::getPeakTime() const { return peakTime; }
+
+juce::int64 ValueHolderBase::getHoldTime() const { return holdTime; }
+//==============================================================================
+ValueHolder::ValueHolder() { holdTime = 500; }
+
+ValueHolder::~ValueHolder() = default;
 
 void ValueHolder::updateHeldValue(float v)
 {
-    if (v > threshold)
+    currentValue = v;
+
+    if (getIsOverThreshold())
     {
-        isOverThreshold = true;
-        timeOfPeak = juce::Time::currentTimeMillis();
+        peakTime = getNow();
         if (v > heldValue)
         {
             heldValue = v;
         }
-    }
-    
-    currentValue = v;
+    }    
 }
 
-void ValueHolder::setHoldTime(int ms) { durationToHoldForMs = ms; }
-
-float ValueHolder::getCurrentValue() const { return currentValue; }
+void ValueHolder::timerCallbackImpl()
+{
+    if (!getIsOverThreshold())
+    {
+        heldValue = NEGATIVE_INFINITY;
+    }
+}
 
 float ValueHolder::getHeldValue() const { return heldValue; }
+//==============================================================================
+DecayingValueHolder::DecayingValueHolder() : decayRateMultiplier(3)
+{
+    setDecayRate(3);
+}
 
-bool ValueHolder::getIsOverThreshold() const { return isOverThreshold; }
+DecayingValueHolder::~DecayingValueHolder() = default;
+
+void DecayingValueHolder::updateHeldValue(float v)
+{
+    if (v > currentValue)
+    {
+        peakTime = getNow();
+        currentValue = v;
+        resetDecayRateMultiplier();
+    }
+}
+
+void DecayingValueHolder::timerCallbackImpl()
+{
+    currentValue = juce::jlimit<float>(NEGATIVE_INFINITY,
+        MAX_DECIBELS,
+        currentValue - decayRatePerFrame * decayRateMultiplier);
+
+    decayRateMultiplier++;
+
+    if (currentValue <= NEGATIVE_INFINITY)
+    {
+        resetDecayRateMultiplier();
+    }
+}
+
+void DecayingValueHolder::setDecayRate(float dbPerSec) { decayRatePerFrame = dbPerSec / frameRate; }
+
+void DecayingValueHolder::resetDecayRateMultiplier() { decayRateMultiplier = 1; }
 //==============================================================================
 TextMeter::TextMeter() : cachedValueDb(NEGATIVE_INFINITY)
 {
@@ -84,9 +123,12 @@ void TextMeter::paint(juce::Graphics& g)
     juce::Colour textColor { juce::Colours::white };
     auto valueToDisplay = NEGATIVE_INFINITY;
     valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
+    auto now = ValueHolder::getNow();
 
-    if (valueHolder.getIsOverThreshold())
-    {
+    if  (valueHolder.getIsOverThreshold() || 
+        (now - valueHolder.getPeakTime() < valueHolder.getHoldTime()) &&
+            valueHolder.getPeakTime() > valueHolder.getHoldTime())     // for plugin launch
+    {   
         g.setColour(juce::Colours::red);
         g.fillAll();
         textColor = juce::Colours::black;
@@ -136,7 +178,7 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
     g.setFont (15.0f);
     g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
 }
-
+//==============================================================================
 void Meter::paint(juce::Graphics& g)
 {
     using namespace juce;
@@ -152,11 +194,18 @@ void Meter::paint(juce::Graphics& g)
     g.setColour(Colours::white);
     g.fillRect(bounds.withY(remappedPeakDb).withBottom(bounds.getBottom()));
     // i like this implementation more, especially the last string in this function
+
+    decayingValueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
+    g.setColour(decayingValueHolder.getIsOverThreshold() ? Colours::red : Colours::orange);
+
+    float remappedTick = jmap<float>(decayingValueHolder.getCurrentValue(), NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY());
+    g.fillRect(bounds.withY(remappedTick).withHeight(4));
 }
 
 void Meter::update(float dbLevel)
 {
     peakDb = dbLevel;
+    decayingValueHolder.updateHeldValue(peakDb);
     repaint();
 }
 
@@ -187,8 +236,6 @@ void DbScale::buildBackgroundImage(int dbDivision, juce::Rectangle<int> meterBou
             getHeight() / ((maxDb - minDb) / dbDivision),
             juce::Justification::centred, 1);
     }
-
-    //repaint();
 }
 
 std::vector<Tick> DbScale::getTicks(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb)

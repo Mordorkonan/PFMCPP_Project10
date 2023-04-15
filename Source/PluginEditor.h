@@ -16,52 +16,61 @@
 //==============================================================================
 /**
 */
-struct Meter : juce::Component
+struct ValueHolderBase : juce::Timer
 {
-    void paint(juce::Graphics&) override;
-    void update(float dbLevel);
-private:
-    float peakDb { NEGATIVE_INFINITY };
+    ValueHolderBase();
+    virtual ~ValueHolderBase();
+
+    virtual void updateHeldValue(float v) = 0;
+    virtual void timerCallback() override;
+    virtual void timerCallbackImpl() = 0;
+    void setThreshold(float th);
+    void setHoldTime(int ms);
+    float getCurrentValue() const;
+    bool getIsOverThreshold() const;
+
+    juce::int64 getPeakTime() const;
+    juce::int64 getHoldTime() const;
+    static juce::int64 getNow();
+
+protected:
+    int frameRate = 60;
+    float threshold = 0.0f;
+    float currentValue = NEGATIVE_INFINITY;
+    juce::int64 peakTime = 0;   // 0 to prevent red textmeter at launch
+    juce::int64 holdTime = 2000;
 };
-
-struct Tick
-{
-    float db{ 0.f };
-    int y{ 0 };
-};
-
-struct DbScale : juce::Component
-{
-    ~DbScale() override = default;
-    void paint(juce::Graphics& g) override;
-    //void resized() override;
-    void buildBackgroundImage(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb);
-    static std::vector<Tick> getTicks(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb);
-
-private:
-    juce::Image bkgd;
-};
-
-struct ValueHolder : juce::Timer
+//==============================================================================
+struct ValueHolder : ValueHolderBase
 {
     ValueHolder();
     ~ValueHolder();
-    void timerCallback() override;
-    void setThreshold(float th);
-    void updateHeldValue(float v);
-    void setHoldTime(int ms);
-    float getCurrentValue() const;
-    float getHeldValue() const;
-    bool getIsOverThreshold() const;
-private:
-    float threshold = 0;
-    float currentValue = NEGATIVE_INFINITY;
-    float heldValue = NEGATIVE_INFINITY;
-    juce::int64 timeOfPeak;
-    int durationToHoldForMs{ 500 };
-    bool isOverThreshold{ false };
-};
+    void timerCallbackImpl() override;
+    void updateHeldValue(float v) override;
 
+    float getHeldValue() const;
+
+private:
+    float heldValue = NEGATIVE_INFINITY;
+};
+//==============================================================================
+struct DecayingValueHolder : ValueHolderBase
+{
+    DecayingValueHolder();
+    ~DecayingValueHolder();
+
+    void timerCallbackImpl() override;
+    void updateHeldValue(float v) override;
+
+    void setDecayRate(float dbPerSec);
+
+private:
+    float decayRatePerFrame{ 0 };
+    float decayRateMultiplier{ 1 };
+
+    void resetDecayRateMultiplier();
+};
+//==============================================================================
 struct TextMeter : juce::Component
 {
     TextMeter();
@@ -72,7 +81,33 @@ private:
     float cachedValueDb;
     ValueHolder valueHolder;
 };
+//==============================================================================
+struct Meter : juce::Component
+{
+    void paint(juce::Graphics&) override;
+    void update(float dbLevel);
+private:
+    float peakDb { NEGATIVE_INFINITY };
+    DecayingValueHolder decayingValueHolder;
+};
+//==============================================================================
+struct Tick
+{
+    float db{ 0.f };
+    int y{ 0 };
+};
+//==============================================================================
+struct DbScale : juce::Component
+{
+    ~DbScale() override = default;
+    void paint(juce::Graphics& g) override;
+    void buildBackgroundImage(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb);
+    static std::vector<Tick> getTicks(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb);
 
+private:
+    juce::Image bkgd;
+};
+//==============================================================================
 class PFMCPP_Project10AudioProcessorEditor  : public juce::AudioProcessorEditor,
                                               public juce::Timer
 {
