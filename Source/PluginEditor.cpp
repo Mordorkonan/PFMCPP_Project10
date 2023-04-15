@@ -29,7 +29,7 @@ void ValueHolderBase::timerCallback()
 
 float ValueHolderBase::getCurrentValue() const { return currentValue; }
 
-bool ValueHolderBase::getIsOverThreshold() const { return (currentValue > threshold) ? true : false; }
+bool ValueHolderBase::getIsOverThreshold() const { return currentValue > threshold; }
 
 void ValueHolderBase::setHoldTime(int ms) { holdTime = ms; }
 
