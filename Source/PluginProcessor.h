@@ -14,6 +14,56 @@
 //==============================================================================
 /**
 */
+template<typename T>
+struct Averager
+{
+    Averager(size_t numElements, T initialValue)
+    {
+        resize(numElements, initialValue);
+    }
+
+    void resize(size_t numElements, T initialValue)
+    {
+        elements.resize(numElements);
+        clear(initialValue);
+    }
+
+    void clear(T initialValue)
+    {
+        for (auto element : elements)
+        {
+            element = initialValue;
+        }
+        
+        writeIndex = 0;
+        sum = initialValue * elements.size();
+        avg = static_cast<float>(initialValue);
+    }
+
+    size_t getSize() const { return elements.size(); }
+
+    void add(T t)
+    {
+        std::atomic<size_t> currentIndex = writeIndex;
+        std::atomic<T> currentSum = sum;
+
+        currentSum = currentSum - elements[currentIndex] + t;
+        elements[currentIndex] = t;
+        currentIndex++;
+
+        writeIndex = currentIndex;
+        sum = currentSum;
+        avg = static_cast<float>(currentSum / elements.size());
+    }
+
+    float getAvg() const { return avg; }
+private:
+    std::vector<T> elements;
+    std::atomic<float> avg{ static_cast<float>(T()) };
+    std::atomic<size_t> writeIndex = 0;
+    std::atomic<T> sum{ 0 };
+};
+//==============================================================================
 template<typename T, size_t Size>
 struct Fifo
 {
