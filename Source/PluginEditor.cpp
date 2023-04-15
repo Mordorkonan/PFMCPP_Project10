@@ -23,7 +23,7 @@ void ValueHolderBase::timerCallback()
 {
     if (getNow() - peakTime > holdTime)
     {
-        outerTimerCallback();
+        timerCallbackImpl();
     }
 }
 
@@ -61,7 +61,7 @@ void ValueHolder::updateHeldValue(float v)
     }    
 }
 
-void ValueHolder::outerTimerCallback()
+void ValueHolder::timerCallbackImpl()
 {
     if (!getIsOverThreshold())
     {
@@ -88,23 +88,18 @@ void DecayingValueHolder::updateHeldValue(float v)
     }
 }
 
-void DecayingValueHolder::timerCallback()
-{
-    ValueHolderBase::timerCallback();
-
-    if (currentValue <= NEGATIVE_INFINITY)
-    {
-        resetDecayRateMultiplier();
-    }
-}
-
-void DecayingValueHolder::outerTimerCallback()
+void DecayingValueHolder::timerCallbackImpl()
 {
     currentValue = juce::jlimit<float>(NEGATIVE_INFINITY,
         MAX_DECIBELS,
         currentValue - decayRatePerFrame * decayRateMultiplier);
 
     decayRateMultiplier++;
+
+    if (currentValue <= NEGATIVE_INFINITY)
+    {
+        resetDecayRateMultiplier();
+    }
 }
 
 void DecayingValueHolder::setDecayRate(float dbPerSec) { decayRatePerFrame = dbPerSec / frameRate; }
@@ -132,22 +127,22 @@ void TextMeter::paint(juce::Graphics& g)
     valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
     auto now = ValueHolder::getNow();
 
-        if  (valueHolder.getIsOverThreshold() || 
-            (now - valueHolder.getPeakTime() < valueHolder.getHoldTime()) &&
-             valueHolder.getPeakTime() > valueHolder.getHoldTime())     // for plugin launch
-        {   
-            g.setColour(juce::Colours::red);
-            g.fillAll();
-            textColor = juce::Colours::black;
-            valueToDisplay = valueHolder.getHeldValue();
-        }
-        else
-        {
-            g.setColour(juce::Colours::black);
-            g.fillAll();
-            textColor = juce::Colours::white;
-            valueToDisplay = valueHolder.getCurrentValue();
-        }
+    if  (valueHolder.getIsOverThreshold() || 
+        (now - valueHolder.getPeakTime() < valueHolder.getHoldTime()) &&
+            valueHolder.getPeakTime() > valueHolder.getHoldTime())     // for plugin launch
+    {   
+        g.setColour(juce::Colours::red);
+        g.fillAll();
+        textColor = juce::Colours::black;
+        valueToDisplay = valueHolder.getHeldValue();
+    }
+    else
+    {
+        g.setColour(juce::Colours::black);
+        g.fillAll();
+        textColor = juce::Colours::white;
+        valueToDisplay = valueHolder.getCurrentValue();
+    }
 
     g.setColour(textColor);
     g.setFont(12);
