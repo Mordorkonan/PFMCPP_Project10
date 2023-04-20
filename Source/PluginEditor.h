@@ -108,6 +108,19 @@ private:
     juce::Image bkgd;
 };
 //==============================================================================
+struct MacroMeter : juce::Component
+{
+    //MacroMeter();
+    void paint(juce::Graphics& g) override;
+    void resized() override;
+    void update(float level);
+
+private:
+    TextMeter textMeter;
+    Meter peakMeter, avgMeter;
+    Averager<float> averager { 1, NEGATIVE_INFINITY };
+};
+//==============================================================================
 class PFMCPP_Project10AudioProcessorEditor  : public juce::AudioProcessorEditor,
                                               public juce::Timer
 {
@@ -116,7 +129,7 @@ public:
     ~PFMCPP_Project10AudioProcessorEditor() override;
 
     //==============================================================================
-    void paint (juce::Graphics&) override;
+    void paint(juce::Graphics&) override;
     void resized() override;
     void timerCallback() override;
 
@@ -129,6 +142,7 @@ private:
     Meter meter;
     TextMeter textMeter;
     DbScale dbScale;
+    MacroMeter macroMeter;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)
 };

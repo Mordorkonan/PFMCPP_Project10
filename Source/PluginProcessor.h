@@ -46,14 +46,16 @@ struct Averager
     {
         std::atomic<size_t> currentIndex = writeIndex;
         std::atomic<T> currentSum = sum;
+        std::atomic<float> currentAvg = avg;
 
         currentSum = currentSum - elements[currentIndex] + t;
+        currentAvg = static_cast<float>(currentSum / elements.size());
         elements[currentIndex] = t;
         currentIndex++;
 
         writeIndex = currentIndex;
         sum = currentSum;
-        avg = static_cast<float>(currentSum / elements.size());
+        avg = currentAvg;
     }
 
     float getAvg() const { return avg; }

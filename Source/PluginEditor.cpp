@@ -114,7 +114,7 @@ void TextMeter::update(float valueDb)
 {
     cachedValueDb = valueDb;
     valueHolder.updateHeldValue(cachedValueDb);
-    repaint();
+    //repaint();
 }
 
 void TextMeter::paint(juce::Graphics& g)
@@ -159,6 +159,7 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     addAndMakeVisible(meter);
     addAndMakeVisible(textMeter);
     addAndMakeVisible(dbScale);
+    addAndMakeVisible(macroMeter);
 
     startTimerHz(60);
     setSize (400, 300);
@@ -176,7 +177,7 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
 
     g.setColour (juce::Colours::white);
     g.setFont (15.0f);
-    g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
+    g.drawFittedText (macroMeter.getLocalBounds().toString(), getLocalBounds(), juce::Justification::centred, 1);
 }
 //==============================================================================
 void Meter::paint(juce::Graphics& g)
@@ -206,7 +207,7 @@ void Meter::update(float dbLevel)
 {
     peakDb = dbLevel;
     decayingValueHolder.updateHeldValue(peakDb);
-    repaint();
+    //repaint();
 }
 
 void DbScale::paint(juce::Graphics& g)
@@ -258,6 +259,32 @@ std::vector<Tick> DbScale::getTicks(int dbDivision, juce::Rectangle<int> meterBo
     return tickVector;
 }
 
+//MacroMeter::MacroMeter() : averager(1, NEGATIVE_INFINITY) { }
+
+void MacroMeter::paint(juce::Graphics& g)
+{
+    g.setColour(juce::Colours::aqua);
+    g.drawRect(getLocalBounds());
+}
+
+void MacroMeter::update(float level)
+{
+    avgMeter.update(level);
+    peakMeter.update(level);
+    textMeter.update(level);
+    repaint();
+}
+
+void MacroMeter::resized()
+{
+    auto bounds = getLocalBounds();
+    int meterWidth = 25;
+
+    avgMeter.setBounds(bounds.getX(), bounds.getY(), meterWidth, bounds.getHeight());
+    peakMeter.setBounds(avgMeter.getRight() + 5, bounds.getY(), meterWidth, bounds.getHeight());
+    textMeter.setBounds(peakMeter.getX(), bounds.getY() - 20, meterWidth, 16);
+}
+
 void PFMCPP_Project10AudioProcessorEditor::timerCallback()
 {
     if (audioProcessor.audioBufferFifo.pull(buffer))
@@ -277,12 +304,13 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     // This is generally where you'll want to lay out the positions of any
     // subcomponents in your editor..
     auto bounds = getLocalBounds();
-    //meter.setBounds(15, 45, 20, bounds.getHeight() - 30);
-    meter.setBounds(15,
-                    JUCE_LIVE_CONSTANT(25),
-                    25,
-                    JUCE_LIVE_CONSTANT(getHeight() - 50));
-    textMeter.setBounds(meter.getX(), meter.getY() - 20, meter.getWidth(), 16);
-    dbScale.setBounds(meter.getRight(), 0, meter.getWidth() + 10, getHeight());
-    dbScale.buildBackgroundImage(6, meter.getBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
+    //meter.setBounds(15, 25, 25, bounds.getHeight() - 50);
+    //meter.setBounds(15,
+    //                JUCE_LIVE_CONSTANT(25),
+    //                25,
+    //                JUCE_LIVE_CONSTANT(getHeight() - 50));
+    //textMeter.setBounds(meter.getX(), meter.getY() - 20, meter.getWidth(), 16);
+    //dbScale.setBounds(meter.getRight(), 0, meter.getWidth() + 10, getHeight());
+    //dbScale.buildBackgroundImage(6, meter.getBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
+    macroMeter.setBounds(100, 25, 100, getHeight() - 50);
 }
