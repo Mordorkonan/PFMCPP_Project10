@@ -33,8 +33,9 @@ struct ValueHolderBase : juce::Timer
     juce::int64 getHoldTime() const;
     static juce::int64 getNow();
 
+    static int frameRate;
+
 protected:
-    int frameRate = 60;
     float threshold = 0.0f;
     float currentValue = NEGATIVE_INFINITY;
     juce::int64 peakTime = 0;   // 0 to prevent red textmeter at launch
@@ -74,7 +75,7 @@ private:
 struct TextMeter : juce::Component
 {
     TextMeter();
-    void paint(juce::Graphics& g) override;
+    void paintTextMeter(juce::Graphics& g, float offsetX, float offsetY);
     ///expects a decibel value
     void update(float valueDb);
 private:
@@ -84,7 +85,7 @@ private:
 //==============================================================================
 struct Meter : juce::Component
 {
-    void paint(juce::Graphics&) override;
+    void paintMeter(juce::Graphics& g, float offsetX, float offsetY);
     void update(float dbLevel);
 private:
     float peakDb { NEGATIVE_INFINITY };
@@ -100,12 +101,28 @@ struct Tick
 struct DbScale : juce::Component
 {
     ~DbScale() override = default;
-    void paint(juce::Graphics& g) override;
+    void paintScale(juce::Graphics& g, float offsetX, float offsetY);
     void buildBackgroundImage(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb);
     static std::vector<Tick> getTicks(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb);
 
 private:
     juce::Image bkgd;
+};
+//==============================================================================
+struct MacroMeter : juce::Component
+{
+    MacroMeter();
+    ~MacroMeter();
+    void paint(juce::Graphics& g) override;
+    void resized() override;
+    void update(float level);
+    juce::Rectangle<int> getPeakMeterBounds() const;
+
+private:
+    TextMeter textMeter;
+    Meter peakMeter, avgMeter;
+    DbScale dbScale;
+    Averager<float> averager;
 };
 //==============================================================================
 class PFMCPP_Project10AudioProcessorEditor  : public juce::AudioProcessorEditor,
@@ -116,7 +133,7 @@ public:
     ~PFMCPP_Project10AudioProcessorEditor() override;
 
     //==============================================================================
-    void paint (juce::Graphics&) override;
+    void paint(juce::Graphics&) override;
     void resized() override;
     void timerCallback() override;
 
@@ -126,9 +143,7 @@ private:
     PFMCPP_Project10AudioProcessor& audioProcessor;
 
     juce::AudioBuffer<float> buffer;
-    Meter meter;
-    TextMeter textMeter;
-    DbScale dbScale;
+    MacroMeter macroMeter;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)
 };

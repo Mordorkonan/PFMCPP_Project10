@@ -29,6 +29,8 @@ void ValueHolderBase::timerCallback()
 
 float ValueHolderBase::getCurrentValue() const { return currentValue; }
 
+//int ValueHolderBase::getFrameRate() const { return frameRate; }
+
 bool ValueHolderBase::getIsOverThreshold() const { return currentValue > threshold; }
 
 void ValueHolderBase::setHoldTime(int ms) { holdTime = ms; }
@@ -40,6 +42,8 @@ juce::int64 ValueHolderBase::getNow() { return juce::Time::currentTimeMillis(); 
 juce::int64 ValueHolderBase::getPeakTime() const { return peakTime; }
 
 juce::int64 ValueHolderBase::getHoldTime() const { return holdTime; }
+
+int ValueHolderBase::frameRate = 60;
 //==============================================================================
 ValueHolder::ValueHolder() { holdTime = 500; }
 
@@ -114,12 +118,11 @@ void TextMeter::update(float valueDb)
 {
     cachedValueDb = valueDb;
     valueHolder.updateHeldValue(cachedValueDb);
-    repaint();
 }
 
-void TextMeter::paint(juce::Graphics& g)
+void TextMeter::paintTextMeter(juce::Graphics& g, float offsetX, float offsetY)
 {
-    auto bounds = getLocalBounds();
+    auto bounds = getLocalBounds().withX(offsetX).withY(offsetY);
     juce::Colour textColor { juce::Colours::white };
     auto valueToDisplay = NEGATIVE_INFINITY;
     valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
@@ -130,14 +133,14 @@ void TextMeter::paint(juce::Graphics& g)
             valueHolder.getPeakTime() > valueHolder.getHoldTime())     // for plugin launch
     {   
         g.setColour(juce::Colours::red);
-        g.fillAll();
+        g.fillRect(bounds);
         textColor = juce::Colours::black;
         valueToDisplay = valueHolder.getHeldValue();
     }
     else
     {
         g.setColour(juce::Colours::black);
-        g.fillAll();
+        g.fillRect(bounds);
         textColor = juce::Colours::white;
         valueToDisplay = valueHolder.getCurrentValue();
     }
@@ -146,7 +149,7 @@ void TextMeter::paint(juce::Graphics& g)
     g.setFont(12);
 
     g.drawFittedText((valueToDisplay > NEGATIVE_INFINITY) ? juce::String(valueToDisplay, 1) : juce::String("-inf"), 
-                     getLocalBounds(), 
+                     bounds,
                      juce::Justification::centred, 
                      1);
 }
@@ -156,11 +159,10 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    addAndMakeVisible(meter);
-    addAndMakeVisible(textMeter);
-    addAndMakeVisible(dbScale);
 
-    startTimerHz(60);
+    addAndMakeVisible(macroMeter);
+
+    startTimerHz(ValueHolderBase::frameRate);
     setSize (400, 300);
 }
 
@@ -173,16 +175,12 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
-
-    g.setColour (juce::Colours::white);
-    g.setFont (15.0f);
-    g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
 }
 //==============================================================================
-void Meter::paint(juce::Graphics& g)
+void Meter::paintMeter(juce::Graphics& g, float offsetX, float offsetY)
 {
     using namespace juce;
-    auto bounds = getLocalBounds().toFloat();
+    auto bounds = getLocalBounds().toFloat().withX(offsetX).withY(offsetY);
 
     g.setColour(Colours::darkgrey);
     g.drawRect(bounds, 2.0f);
@@ -206,12 +204,11 @@ void Meter::update(float dbLevel)
 {
     peakDb = dbLevel;
     decayingValueHolder.updateHeldValue(peakDb);
-    repaint();
 }
 
-void DbScale::paint(juce::Graphics& g)
+void DbScale::paintScale(juce::Graphics& g, float offsetX, float offsetY)
 {
-    g.drawImage(bkgd, getLocalBounds().toFloat());
+    g.drawImage(bkgd, getLocalBounds().toFloat().withX(offsetX).withY(offsetY));
 }
 
 void DbScale::buildBackgroundImage(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb)
@@ -258,6 +255,41 @@ std::vector<Tick> DbScale::getTicks(int dbDivision, juce::Rectangle<int> meterBo
     return tickVector;
 }
 
+MacroMeter::MacroMeter() : averager(ValueHolderBase::frameRate, NEGATIVE_INFINITY) { }
+
+MacroMeter::~MacroMeter() { averager.clear(NEGATIVE_INFINITY); }
+
+void MacroMeter::paint(juce::Graphics& g)
+{
+    avgMeter.paintMeter(g, 0.0f, 25.0f);
+    peakMeter.paintMeter(g, static_cast<float>(avgMeter.getWidth()) + 5.0f, 25.0f);
+    textMeter.paintTextMeter(g, 0.0f, 5.0f);
+    dbScale.paintScale(g, static_cast<float>(peakMeter.getRight() * 2 + 5), 0.0f);
+}
+
+void MacroMeter::update(float level)
+{
+    averager.add(level);
+    avgMeter.update(averager.getAvg());
+    peakMeter.update(level);
+    textMeter.update(level);
+    repaint();
+}
+
+void MacroMeter::resized()
+{
+    auto bounds = getLocalBounds();
+    int meterWidth = 25;
+
+    avgMeter.setBounds(bounds.getX(), bounds.getY() + 25, meterWidth, bounds.getHeight() - 50);
+    peakMeter.setBounds(avgMeter.getBounds());
+    textMeter.setBounds(bounds.getX(), bounds.getY() + 5, meterWidth, 16);
+    dbScale.setBounds(bounds.withWidth(meterWidth + 10));
+    dbScale.buildBackgroundImage(6, peakMeter.getBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
+}
+
+juce::Rectangle<int> MacroMeter::getPeakMeterBounds() const { return peakMeter.getLocalBounds(); }
+
 void PFMCPP_Project10AudioProcessorEditor::timerCallback()
 {
     if (audioProcessor.audioBufferFifo.pull(buffer))
@@ -267,8 +299,7 @@ void PFMCPP_Project10AudioProcessorEditor::timerCallback()
 
         }
         auto magDb = juce::Decibels::gainToDecibels(buffer.getMagnitude(0, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
-        meter.update(magDb);
-        textMeter.update(magDb);
+        macroMeter.update(magDb);
     }
 }
 
@@ -277,12 +308,5 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     // This is generally where you'll want to lay out the positions of any
     // subcomponents in your editor..
     auto bounds = getLocalBounds();
-    //meter.setBounds(15, 45, 20, bounds.getHeight() - 30);
-    meter.setBounds(15,
-                    JUCE_LIVE_CONSTANT(25),
-                    25,
-                    JUCE_LIVE_CONSTANT(getHeight() - 50));
-    textMeter.setBounds(meter.getX(), meter.getY() - 20, meter.getWidth(), 16);
-    dbScale.setBounds(meter.getRight(), 0, meter.getWidth() + 10, getHeight());
-    dbScale.buildBackgroundImage(6, meter.getBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
+    macroMeter.setBounds(100, 0, 100, getHeight());
 }
