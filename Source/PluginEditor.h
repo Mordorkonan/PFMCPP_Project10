@@ -28,13 +28,16 @@ struct ValueHolderBase : juce::Timer
     void setHoldTime(int ms);
     float getCurrentValue() const;
     bool getIsOverThreshold() const;
+    //int getFrameRate() const;
 
     juce::int64 getPeakTime() const;
     juce::int64 getHoldTime() const;
     static juce::int64 getNow();
 
+    static int frameRate;
+
 protected:
-    int frameRate = 60;
+    //int frameRate = 60;
     float threshold = 0.0f;
     float currentValue = NEGATIVE_INFINITY;
     juce::int64 peakTime = 0;   // 0 to prevent red textmeter at launch
@@ -102,7 +105,7 @@ struct Tick
 struct DbScale : juce::Component
 {
     ~DbScale() override = default;
-    void paint(juce::Graphics& g) override;
+    void paintScale(juce::Graphics& g, float offsetX, float offsetY);
     void buildBackgroundImage(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb);
     static std::vector<Tick> getTicks(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb);
 
@@ -112,15 +115,18 @@ private:
 //==============================================================================
 struct MacroMeter : juce::Component
 {
-    //MacroMeter();
+    MacroMeter();
+    ~MacroMeter();
     void paint(juce::Graphics& g) override;
     void resized() override;
     void update(float level);
+    juce::Rectangle<int> getPeakMeterBounds() const;
 
 private:
     TextMeter textMeter;
     Meter peakMeter, avgMeter;
-    Averager<float> averager { 1, NEGATIVE_INFINITY };
+    DbScale dbScale;
+    Averager<float> averager;
 };
 //==============================================================================
 class PFMCPP_Project10AudioProcessorEditor  : public juce::AudioProcessorEditor,
@@ -141,9 +147,9 @@ private:
     PFMCPP_Project10AudioProcessor& audioProcessor;
 
     juce::AudioBuffer<float> buffer;
-    Meter meter;
-    TextMeter textMeter;
-    DbScale dbScale;
+    //Meter meter;
+    //TextMeter textMeter;
+    //DbScale dbScale;
     MacroMeter macroMeter;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)

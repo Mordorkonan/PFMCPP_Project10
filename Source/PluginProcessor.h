@@ -42,23 +42,33 @@ struct Averager
 
     size_t getSize() const { return elements.size(); }
 
+    //void add(T t)
+    //{
+    //    std::atomic<size_t> currentIndex = writeIndex;
+    //    std::atomic<T> currentSum = sum;
+    //    std::atomic<float> currentAvg = avg;
+
+    //    currentSum = currentSum - elements[currentIndex] + t;
+    //    currentAvg = static_cast<float>(currentSum / elements.size());
+    //    elements[currentIndex] = t;
+    //    currentIndex++;
+
+    //    writeIndex = currentIndex;
+    //    sum = currentSum;
+    //    avg = currentAvg;
+    //}
+
     void add(T t)
     {
-        std::atomic<size_t> currentIndex = writeIndex;
-        std::atomic<T> currentSum = sum;
-        std::atomic<float> currentAvg = avg;
-
-        currentSum = currentSum - elements[currentIndex] + t;
-        currentAvg = static_cast<float>(currentSum / elements.size());
-        elements[currentIndex] = t;
-        currentIndex++;
-
-        writeIndex = currentIndex;
-        sum = currentSum;
-        avg = currentAvg;
+        sum = sum - elements[writeIndex] + t;
+        avg = static_cast<float>(sum / elements.size());
+        elements[writeIndex] = t;
+        //writeIndex++;
+        writeIndex = ++writeIndex % elements.size();
     }
 
     float getAvg() const { return avg; }
+
 private:
     std::vector<T> elements;
     std::atomic<float> avg{ static_cast<float>(T()) };
