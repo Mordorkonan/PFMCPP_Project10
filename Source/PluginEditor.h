@@ -28,7 +28,6 @@ struct ValueHolderBase : juce::Timer
     void setHoldTime(int ms);
     float getCurrentValue() const;
     bool getIsOverThreshold() const;
-    //int getFrameRate() const;
 
     juce::int64 getPeakTime() const;
     juce::int64 getHoldTime() const;
@@ -37,7 +36,6 @@ struct ValueHolderBase : juce::Timer
     static int frameRate;
 
 protected:
-    //int frameRate = 60;
     float threshold = 0.0f;
     float currentValue = NEGATIVE_INFINITY;
     juce::int64 peakTime = 0;   // 0 to prevent red textmeter at launch
@@ -77,7 +75,6 @@ private:
 struct TextMeter : juce::Component
 {
     TextMeter();
-    //void paint(juce::Graphics& g) override;
     void paintTextMeter(juce::Graphics& g, float offsetX, float offsetY);
     ///expects a decibel value
     void update(float valueDb);
@@ -88,7 +85,6 @@ private:
 //==============================================================================
 struct Meter : juce::Component
 {
-    //void paint(juce::Graphics&) override;
     void paintMeter(juce::Graphics& g, float offsetX, float offsetY);
     void update(float dbLevel);
 private:
@@ -147,9 +143,6 @@ private:
     PFMCPP_Project10AudioProcessor& audioProcessor;
 
     juce::AudioBuffer<float> buffer;
-    //Meter meter;
-    //TextMeter textMeter;
-    //DbScale dbScale;
     MacroMeter macroMeter;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)

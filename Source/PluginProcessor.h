@@ -10,7 +10,7 @@
 
 #include <JuceHeader.h>
 
-//#define OSC_GAIN true
+#define OSC_GAIN true
 //==============================================================================
 /**
 */
@@ -42,29 +42,22 @@ struct Averager
 
     size_t getSize() const { return elements.size(); }
 
-    //void add(T t)
-    //{
-    //    std::atomic<size_t> currentIndex = writeIndex;
-    //    std::atomic<T> currentSum = sum;
-    //    std::atomic<float> currentAvg = avg;
-
-    //    currentSum = currentSum - elements[currentIndex] + t;
-    //    currentAvg = static_cast<float>(currentSum / elements.size());
-    //    elements[currentIndex] = t;
-    //    currentIndex++;
-
-    //    writeIndex = currentIndex;
-    //    sum = currentSum;
-    //    avg = currentAvg;
-    //}
-
     void add(T t)
     {
-        sum = sum - elements[writeIndex] + t;
-        avg = static_cast<float>(sum / elements.size());
-        elements[writeIndex] = t;
-        //writeIndex++;
-        writeIndex = ++writeIndex % elements.size();
+        auto currentSum = sum.load();
+        auto currentIndex = writeIndex.load();
+        auto currentAvg = avg.load();
+
+        currentSum = currentSum - elements[currentIndex] + t;
+        currentAvg = static_cast<float>(currentSum / elements.size());
+        elements[currentIndex] = t;
+        ++currentIndex;
+        if (currentIndex == elements.size())
+            currentIndex = 0;
+
+        sum.store(currentSum);
+        writeIndex.store(currentIndex);
+        avg.store(currentAvg);
     }
 
     float getAvg() const { return avg; }

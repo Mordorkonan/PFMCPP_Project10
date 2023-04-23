@@ -175,10 +175,6 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
-
-    //g.setColour (juce::Colours::white);
-    //g.setFont (15.0f);
-    //g.drawFittedText(macroMeter.getLocalBounds().toString(), getLocalBounds(), juce::Justification::centred, 1);
 }
 //==============================================================================
 void Meter::paintMeter(juce::Graphics& g, float offsetX, float offsetY)
@@ -265,9 +261,6 @@ MacroMeter::~MacroMeter() { averager.clear(NEGATIVE_INFINITY); }
 
 void MacroMeter::paint(juce::Graphics& g)
 {
-    //g.setColour(juce::Colours::aqua);
-    //g.drawRect(getLocalBounds());
-
     avgMeter.paintMeter(g, 0.0f, 25.0f);
     peakMeter.paintMeter(g, static_cast<float>(avgMeter.getWidth()) + 5.0f, 25.0f);
     textMeter.paintTextMeter(g, 0.0f, 5.0f);
@@ -315,14 +308,5 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     // This is generally where you'll want to lay out the positions of any
     // subcomponents in your editor..
     auto bounds = getLocalBounds();
-    //meter.setBounds(15, 25, 25, bounds.getHeight() - 50);
-    //meter.setBounds(15,
-    //                JUCE_LIVE_CONSTANT(25),
-    //                25,
-    //                JUCE_LIVE_CONSTANT(getHeight() - 50));
-    //textMeter.setBounds(meter.getX(), meter.getY() - 20, meter.getWidth(), 16);
     macroMeter.setBounds(100, 0, 100, getHeight());
-    //dbScale.setBounds(meter.getRight(), 0, meter.getWidth() + 10, getHeight());
-    //dbScale.buildBackgroundImage(6, meter.getBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
-
 }
