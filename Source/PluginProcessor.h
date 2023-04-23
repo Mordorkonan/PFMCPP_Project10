@@ -30,7 +30,7 @@ struct Averager
 
     void clear(T initialValue)
     {
-        for (auto element : elements)
+        for (auto& element : elements)
         {
             element = initialValue;
         }

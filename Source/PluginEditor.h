@@ -74,7 +74,8 @@ private:
 struct TextMeter : juce::Component
 {
     TextMeter();
-    void paint(juce::Graphics& g) override;
+    //void paint(juce::Graphics& g) override;
+    void paintTextMeter(juce::Graphics& g, float offsetX, float offsetY);
     ///expects a decibel value
     void update(float valueDb);
 private:
@@ -84,7 +85,8 @@ private:
 //==============================================================================
 struct Meter : juce::Component
 {
-    void paint(juce::Graphics&) override;
+    //void paint(juce::Graphics&) override;
+    void paintMeter(juce::Graphics& g, float offsetX, float offsetY);
     void update(float dbLevel);
 private:
     float peakDb { NEGATIVE_INFINITY };

@@ -117,9 +117,9 @@ void TextMeter::update(float valueDb)
     //repaint();
 }
 
-void TextMeter::paint(juce::Graphics& g)
+void TextMeter::paintTextMeter(juce::Graphics& g, float offsetX, float offsetY)
 {
-    auto bounds = getLocalBounds();
+    auto bounds = getLocalBounds().withX(offsetX).withY(offsetY);
     juce::Colour textColor { juce::Colours::white };
     auto valueToDisplay = NEGATIVE_INFINITY;
     valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
@@ -130,14 +130,16 @@ void TextMeter::paint(juce::Graphics& g)
             valueHolder.getPeakTime() > valueHolder.getHoldTime())     // for plugin launch
     {   
         g.setColour(juce::Colours::red);
-        g.fillAll();
+        //g.fillAll();
+        g.fillRect(bounds);
         textColor = juce::Colours::black;
         valueToDisplay = valueHolder.getHeldValue();
     }
     else
     {
         g.setColour(juce::Colours::black);
-        g.fillAll();
+        //g.fillAll();
+        g.fillRect(bounds);
         textColor = juce::Colours::white;
         valueToDisplay = valueHolder.getCurrentValue();
     }
@@ -146,7 +148,7 @@ void TextMeter::paint(juce::Graphics& g)
     g.setFont(12);
 
     g.drawFittedText((valueToDisplay > NEGATIVE_INFINITY) ? juce::String(valueToDisplay, 1) : juce::String("-inf"), 
-                     getLocalBounds(), 
+                     bounds, //getLocalBounds(), 
                      juce::Justification::centred, 
                      1);
 }
@@ -156,9 +158,9 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    addAndMakeVisible(meter);
-    addAndMakeVisible(textMeter);
-    addAndMakeVisible(dbScale);
+    //addAndMakeVisible(meter);
+    //addAndMakeVisible(textMeter);
+    //addAndMakeVisible(dbScale);
     addAndMakeVisible(macroMeter);
 
     startTimerHz(60);
@@ -177,13 +179,13 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
 
     g.setColour (juce::Colours::white);
     g.setFont (15.0f);
-    g.drawFittedText (macroMeter.getLocalBounds().toString(), getLocalBounds(), juce::Justification::centred, 1);
+    g.drawFittedText(macroMeter.getLocalBounds().toString(), getLocalBounds(), juce::Justification::centred, 1);
 }
 //==============================================================================
-void Meter::paint(juce::Graphics& g)
+void Meter::paintMeter(juce::Graphics& g, float offsetX, float offsetY)
 {
     using namespace juce;
-    auto bounds = getLocalBounds().toFloat();
+    auto bounds = getLocalBounds().toFloat().withX(offsetX).withY(offsetY);
 
     g.setColour(Colours::darkgrey);
     g.drawRect(bounds, 2.0f);
@@ -265,6 +267,10 @@ void MacroMeter::paint(juce::Graphics& g)
 {
     g.setColour(juce::Colours::aqua);
     g.drawRect(getLocalBounds());
+
+    avgMeter.paintMeter(g, 0.0f, 25.0f);
+    peakMeter.paintMeter(g, static_cast<float>(avgMeter.getWidth()) + 5.0f, 25.0f);
+    textMeter.paintTextMeter(g, 0.0f, 5.0f);
 }
 
 void MacroMeter::update(float level)
@@ -280,9 +286,9 @@ void MacroMeter::resized()
     auto bounds = getLocalBounds();
     int meterWidth = 25;
 
-    avgMeter.setBounds(bounds.getX(), bounds.getY(), meterWidth, bounds.getHeight());
-    peakMeter.setBounds(avgMeter.getRight() + 5, bounds.getY(), meterWidth, bounds.getHeight());
-    textMeter.setBounds(peakMeter.getX(), bounds.getY() - 20, meterWidth, 16);
+    avgMeter.setBounds(bounds.getX(), bounds.getY() + 25, meterWidth, bounds.getHeight() - 50);
+    peakMeter.setBounds(avgMeter.getBounds());
+    textMeter.setBounds(bounds.getX(), bounds.getY() + 5, meterWidth, 16);
 }
 
 void PFMCPP_Project10AudioProcessorEditor::timerCallback()
@@ -294,8 +300,9 @@ void PFMCPP_Project10AudioProcessorEditor::timerCallback()
 
         }
         auto magDb = juce::Decibels::gainToDecibels(buffer.getMagnitude(0, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
-        meter.update(magDb);
-        textMeter.update(magDb);
+        //meter.update(magDb);
+        //textMeter.update(magDb);
+        macroMeter.update(magDb);
     }
 }
 
@@ -312,5 +319,5 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     //textMeter.setBounds(meter.getX(), meter.getY() - 20, meter.getWidth(), 16);
     //dbScale.setBounds(meter.getRight(), 0, meter.getWidth() + 10, getHeight());
     //dbScale.buildBackgroundImage(6, meter.getBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
-    macroMeter.setBounds(100, 25, 100, getHeight() - 50);
+    macroMeter.setBounds(100, 0, 100, getHeight());
 }
