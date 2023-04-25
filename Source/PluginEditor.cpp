@@ -125,7 +125,7 @@ void TextMeter::paintTextMeter(juce::Graphics& g, float offsetX, float offsetY)
     auto bounds = getLocalBounds().withX(offsetX).withY(offsetY);
     juce::Colour textColor { juce::Colours::white };
     auto valueToDisplay = NEGATIVE_INFINITY;
-    //valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
+    valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
     auto now = ValueHolder::getNow();
 
     if  (valueHolder.getIsOverThreshold() || 
@@ -196,7 +196,7 @@ void Meter::paintMeter(juce::Graphics& g, float offsetX, float offsetY)
     g.fillRect(bounds.withY(remappedPeakDb).withBottom(bounds.getBottom()));
     // i like this implementation more, especially the last string in this function
 
-    //decayingValueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
+    decayingValueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
     g.setColour(decayingValueHolder.getIsOverThreshold() ? Colours::red : Colours::orange);
 
     float remappedTick = jmap<float>(decayingValueHolder.getCurrentValue(), NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY());
@@ -360,10 +360,6 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     auto bounds = getLocalBounds();
     juce::Rectangle<int> macroBounds { 0, 0, 75, 335 };
     avgMacroMeter.setBounds(macroBounds.withX(10).withY(10));
-    //avgMacroMeter.setBounds(10, 10, 75, 335);
-    //avgMacroMeter.setBounds(JUCE_LIVE_CONSTANT(8),
-    //    JUCE_LIVE_CONSTANT(2),
-    //    JUCE_LIVE_CONSTANT(75),
-    //    JUCE_LIVE_CONSTANT(345));
+
     peakMacroMeter.setBounds(macroBounds.withX(getRight() - macroBounds.getWidth() - 10).withY(10));
 }
