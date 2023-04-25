@@ -162,7 +162,6 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
 
     addAndMakeVisible(peakMacroMeter);
     addAndMakeVisible(avgMacroMeter);
-    //addAndMakeVisible(label);
 
     startTimerHz(ValueHolderBase::frameRate);
     setSize (400, 300);
@@ -177,9 +176,6 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
-    //label.setFont(18);
-    //label.setColour(juce::Label::textColourId, juce::Colours::grey);
-    //label.setJustificationType(juce::Justification::centred);
 }
 //==============================================================================
 void Meter::paintMeter(juce::Graphics& g, float offsetX, float offsetY)
@@ -264,7 +260,6 @@ MacroMeter::MacroMeter(bool useAverage) :
 averagerLeft(ValueHolderBase::frameRate, NEGATIVE_INFINITY),
 averagerRight(ValueHolderBase::frameRate, NEGATIVE_INFINITY),
 averageMeasure(useAverage)
-//label(useAverage ? "L RMS R", "L RMS R" : "L Peak R", "L Peak R")
 { }
 
 MacroMeter::~MacroMeter()
@@ -363,5 +358,4 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     auto bounds = getLocalBounds();
     avgMacroMeter.setBounds(10, 0, 85, getHeight());
     peakMacroMeter.setBounds(getRight() - 100, 0, 85, getHeight());
-    //label.setBounds(100, 100, 100, 100);
 }

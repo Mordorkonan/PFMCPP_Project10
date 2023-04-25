@@ -147,9 +147,7 @@ private:
     PFMCPP_Project10AudioProcessor& audioProcessor;
 
     juce::AudioBuffer<float> buffer;
-    MacroMeter peakMacroMeter;// , avgMacroMeter;
-    MacroMeter avgMacroMeter = MacroMeter(true);
-    //juce::Label label{ "L Peak R", "L Peak R" };
+    MacroMeter peakMacroMeter, avgMacroMeter { true };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)
 };
