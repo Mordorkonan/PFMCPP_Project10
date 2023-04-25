@@ -111,25 +111,29 @@ private:
 //==============================================================================
 struct MacroMeter : juce::Component
 {
-    MacroMeter();
+    explicit MacroMeter(bool useAverage = false);
     ~MacroMeter();
     void paint(juce::Graphics& g) override;
     void resized() override;
-    void update(float level);
+    void update(float levelLeft, float levelRight);
     juce::Rectangle<int> getPeakMeterBounds() const;
+    bool isAverageMeasure() const;
+    void drawLabel(juce::Graphics& g);
 
 private:
-    TextMeter textMeter;
-    Meter peakMeter, avgMeter;
+    bool averageMeasure;
+    TextMeter textMeterLeft, textMeterRight;
+    Meter meterLeft, meterRight;
     DbScale dbScale;
-    Averager<float> averager;
+    Averager<float> averagerLeft, averagerRight;
+    juce::Label label;
 };
 //==============================================================================
-class PFMCPP_Project10AudioProcessorEditor  : public juce::AudioProcessorEditor,
-                                              public juce::Timer
+class PFMCPP_Project10AudioProcessorEditor : public juce::AudioProcessorEditor,
+    public juce::Timer
 {
 public:
-    PFMCPP_Project10AudioProcessorEditor (PFMCPP_Project10AudioProcessor&);
+    PFMCPP_Project10AudioProcessorEditor(PFMCPP_Project10AudioProcessor&);
     ~PFMCPP_Project10AudioProcessorEditor() override;
 
     //==============================================================================
@@ -143,7 +147,9 @@ private:
     PFMCPP_Project10AudioProcessor& audioProcessor;
 
     juce::AudioBuffer<float> buffer;
-    MacroMeter macroMeter;
+    MacroMeter peakMacroMeter;// , avgMacroMeter;
+    MacroMeter avgMacroMeter = MacroMeter(true);
+    //juce::Label label{ "L Peak R", "L Peak R" };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)
 };
