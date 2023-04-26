@@ -75,7 +75,7 @@ private:
 struct TextMeter : juce::Component
 {
     TextMeter();
-    void paintTextMeter(juce::Graphics& g, float offsetX, float offsetY);
+    void paintTextMeter(juce::Graphics& g);
     ///expects a decibel value
     void update(float valueDb);
 private:
@@ -85,7 +85,7 @@ private:
 //==============================================================================
 struct Meter : juce::Component
 {
-    void paintMeter(juce::Graphics& g, float offsetX, float offsetY);
+    void paintMeter(juce::Graphics& g);
     void update(float dbLevel);
 private:
     float peakDb { NEGATIVE_INFINITY };
@@ -101,7 +101,7 @@ struct Tick
 struct DbScale : juce::Component
 {
     ~DbScale() override = default;
-    void paintScale(juce::Graphics& g, float offsetX, float offsetY);
+    void paintScale(juce::Graphics& g);
     void buildBackgroundImage(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb);
     static std::vector<Tick> getTicks(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb);
 
@@ -109,24 +109,29 @@ private:
     juce::Image bkgd;
 };
 //==============================================================================
+struct LabelWithBackground : juce::Component
+{
+    LabelWithBackground(juce::String labelName, juce::String labelText);
+    void paintLabel(juce::Graphics& g);
+private:
+    juce::Label label;
+};
+//==============================================================================
 struct MacroMeter : juce::Component
 {
     explicit MacroMeter(bool useAverage = false);
     ~MacroMeter();
-    void paint(juce::Graphics& g) override;
+    void paintMacro(juce::Graphics& g);
     void resized() override;
     void update(float levelLeft, float levelRight);
-    juce::Rectangle<int> getPeakMeterBounds() const;
+    juce::Rectangle<int> getLeftMeterBounds() const;
     bool isAverageMeasure() const;
-    void drawLabel(juce::Graphics& g);
 
 private:
     bool averageMeasure;
     TextMeter textMeterLeft, textMeterRight;
     Meter meterLeft, meterRight;
-    DbScale dbScale;
     Averager<float> averagerLeft, averagerRight;
-    juce::Label label;
 };
 //==============================================================================
 class PFMCPP_Project10AudioProcessorEditor : public juce::AudioProcessorEditor,
@@ -149,6 +154,10 @@ private:
     juce::AudioBuffer<float> buffer;
     MacroMeter peakMacroMeter, avgMacroMeter { true };
     juce::Image referenceImage;
+    DbScale peakScale, avgScale;
+
+    LabelWithBackground peakLabel { "L PEAK R", "L PEAK R" },
+                        avgLabel { "L RMS R", "L RMS R" };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)
 };
