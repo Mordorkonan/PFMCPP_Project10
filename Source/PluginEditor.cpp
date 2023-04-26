@@ -108,6 +108,19 @@ void DecayingValueHolder::setDecayRate(float dbPerSec) { decayRatePerFrame = dbP
 
 void DecayingValueHolder::resetDecayRateMultiplier() { decayRateMultiplier = 1; }
 //==============================================================================
+TextMeter::TextMeter() : cachedValueDb(NEGATIVE_INFINITY)
+{
+    valueHolder.setThreshold(0);
+    valueHolder.updateHeldValue(NEGATIVE_INFINITY);
+}
+
+void TextMeter::update(float valueDb)
+{
+    cachedValueDb = valueDb;
+    valueHolder.updateHeldValue(cachedValueDb);
+    repaint();
+}
+
 void TextMeter::paintTextMeter(juce::Graphics& g)
 {
     auto bounds = getBounds();
