@@ -134,6 +134,19 @@ private:
     Averager<float> averagerLeft, averagerRight;
 };
 //==============================================================================
+struct StereoMeter : juce::Component
+{
+    explicit StereoMeter(juce::String labelName, juce::String labelText, bool useAverage = false);
+    void paintStereoMeter(juce::Graphics& g);
+    void update(float levelLeft, float levelRight);
+    void resized() override;
+
+private:
+    MacroMeter macroMeter;
+    DbScale dbScale;
+    LabelWithBackground label;
+};
+//==============================================================================
 class PFMCPP_Project10AudioProcessorEditor : public juce::AudioProcessorEditor,
     public juce::Timer
 {
@@ -152,12 +165,10 @@ private:
     PFMCPP_Project10AudioProcessor& audioProcessor;
 
     juce::AudioBuffer<float> buffer;
-    MacroMeter peakMacroMeter, avgMacroMeter { true };
     juce::Image referenceImage;
-    DbScale peakScale, avgScale;
 
-    LabelWithBackground peakLabel { "L PEAK R", "L PEAK R" },
-                        avgLabel { "L RMS R", "L RMS R" };
+    StereoMeter peakStereoMeter { "L PEAK R", "L PEAK R", false },
+                avgStereoMeter { "L RMS R", "L RMS R", true };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)
 };

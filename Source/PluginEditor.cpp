@@ -161,12 +161,8 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
 
-    addAndMakeVisible(peakMacroMeter);
-    addAndMakeVisible(avgMacroMeter);
-    addAndMakeVisible(peakLabel);
-    addAndMakeVisible(avgLabel);
-    addAndMakeVisible(peakScale);
-    addAndMakeVisible(avgScale);
+    addAndMakeVisible(avgStereoMeter);
+    addAndMakeVisible(peakStereoMeter);
 
     startTimerHz(ValueHolderBase::frameRate);
     setSize (700, 572);
@@ -184,12 +180,8 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
     referenceImage = juce::ImageCache::getFromMemory(BinaryData::Reference_png, BinaryData::Reference_pngSize);
     g.drawImageWithin(referenceImage, 0, 0, getWidth(), getHeight(), juce::RectanglePlacement::stretchToFit);
 
-    avgMacroMeter.paintMacro(g);
-    peakMacroMeter.paintMacro(g);
-    avgLabel.paintLabel(g);
-    peakLabel.paintLabel(g);
-    avgScale.paintScale(g);
-    peakScale.paintScale(g);
+    avgStereoMeter.paintStereoMeter(g);
+    peakStereoMeter.paintStereoMeter(g);
 }
 //==============================================================================
 void Meter::paintMeter(juce::Graphics& g)
@@ -328,7 +320,6 @@ void MacroMeter::update(float levelLeft, float levelRight)
         textMeterLeft.update(levelLeft);
         textMeterRight.update(levelRight);
     }
-    repaint();
 }
 
 void MacroMeter::resized()
@@ -345,6 +336,34 @@ void MacroMeter::resized()
     meterRight.setBounds(bounds.withX(textMeterRight.getX()));
 }
 //==============================================================================
+StereoMeter::StereoMeter(juce::String labelName, juce::String labelText, bool useAverage) :
+label(labelName, labelText),
+macroMeter(useAverage)
+{ }
+
+void StereoMeter::resized()
+{
+    auto bounds = getBounds();
+
+    macroMeter.setBounds(bounds.withHeight(310));
+    dbScale.setBounds(bounds.withX(getX() + 25).withWidth(25));
+    dbScale.buildBackgroundImage(6, macroMeter.getLeftMeterBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
+    label.setBounds(bounds.withY(macroMeter.getBottom()).withHeight(25));
+}
+
+void StereoMeter::update(float levelLeft, float levelRight)
+{
+    macroMeter.update(levelLeft, levelRight);
+    repaint();
+}
+
+void StereoMeter::paintStereoMeter(juce::Graphics& g)
+{
+    macroMeter.paintMacro(g);
+    dbScale.paintScale(g);
+    label.paintLabel(g);
+}
+//==============================================================================
 void PFMCPP_Project10AudioProcessorEditor::timerCallback()
 {
     if (audioProcessor.audioBufferFifo.pull(buffer))
@@ -355,24 +374,15 @@ void PFMCPP_Project10AudioProcessorEditor::timerCallback()
         }
         auto magDbLeft = juce::Decibels::gainToDecibels(buffer.getMagnitude(0, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
         auto magDbRight = juce::Decibels::gainToDecibels(buffer.getMagnitude(1, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
-        peakMacroMeter.update(magDbLeft, magDbRight);
-        avgMacroMeter.update(magDbLeft, magDbRight);
+        avgStereoMeter.update(magDbLeft, magDbRight);
+        peakStereoMeter.update(magDbLeft, magDbRight);
     }
 }
 
 void PFMCPP_Project10AudioProcessorEditor::resized()
 {
-    juce::Rectangle<int> macroBounds { 10, 10, 75, 310 };
+    juce::Rectangle<int> macroBounds{ 10, 10, 75, 335 };
 
-    avgMacroMeter.setBounds(macroBounds);
-    peakMacroMeter.setBounds(macroBounds.withX(getRight() - macroBounds.getWidth() - 10).withY(10));
-
-    avgScale.setBounds(avgMacroMeter.getBounds().withX(avgMacroMeter.getX() + 25).withWidth(25));
-    peakScale.setBounds(peakMacroMeter.getBounds().withX(peakMacroMeter.getX() + 25).withWidth(25));
-
-    avgScale.buildBackgroundImage(6, avgMacroMeter.getLeftMeterBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
-    peakScale.buildBackgroundImage(6, peakMacroMeter.getLeftMeterBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
-
-    avgLabel.setBounds(macroBounds.withY(avgMacroMeter.getBottom()).withHeight(25));
-    peakLabel.setBounds(macroBounds.withX(peakMacroMeter.getX()).withY(peakMacroMeter.getBottom()).withHeight(25));
+    avgStereoMeter.setBounds(macroBounds);
+    peakStereoMeter.setBounds(macroBounds.withX(getRight() - macroBounds.getWidth() - 10));
 }
