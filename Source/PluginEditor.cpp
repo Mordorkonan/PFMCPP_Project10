@@ -118,7 +118,6 @@ void TextMeter::update(float valueDb)
 {
     cachedValueDb = valueDb;
     valueHolder.updateHeldValue(cachedValueDb);
-    repaint();
 }
 
 void TextMeter::paintTextMeter(juce::Graphics& g)
@@ -129,10 +128,10 @@ void TextMeter::paintTextMeter(juce::Graphics& g)
     valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
     auto now = ValueHolder::getNow();
 
-    if (valueHolder.getIsOverThreshold() ||
+    if  (valueHolder.getIsOverThreshold() || 
         (now - valueHolder.getPeakTime() < valueHolder.getHoldTime()) &&
-        valueHolder.getPeakTime() > valueHolder.getHoldTime())     // for plugin launch
-    {
+            valueHolder.getPeakTime() > valueHolder.getHoldTime())     // for plugin launch
+    {   
         g.setColour(juce::Colours::red);
         g.fillRect(bounds);
         textColor = juce::Colours::black;
@@ -149,59 +148,32 @@ void TextMeter::paintTextMeter(juce::Graphics& g)
     g.setColour(textColor);
     g.setFont(12);
 
-    g.drawFittedText((valueToDisplay > NEGATIVE_INFINITY) ? juce::String(valueToDisplay, 1) : juce::String("-inf"),
-        bounds,
-        juce::Justification::centred,
-        1);
-}
-//==============================================================================
-PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMCPP_Project10AudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p)
-{
-    // Make sure that before the constructor has finished, you've set the
-    // editor's size to whatever you need it to be.
-
-    addAndMakeVisible(avgStereoMeter);
-    addAndMakeVisible(peakStereoMeter);
-
-    startTimerHz(ValueHolderBase::frameRate);
-    setSize (700, 572);
-}
-
-PFMCPP_Project10AudioProcessorEditor::~PFMCPP_Project10AudioProcessorEditor()
-{
-}
-
-//==============================================================================
-void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
-{
-    // (Our component is opaque, so we must completely fill the background with a solid colour)
-    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
-    referenceImage = juce::ImageCache::getFromMemory(BinaryData::Reference_png, BinaryData::Reference_pngSize);
-    g.drawImageWithin(referenceImage, 0, 0, getWidth(), getHeight(), juce::RectanglePlacement::stretchToFit);
-
-    avgStereoMeter.paintStereoMeter(g);
-    peakStereoMeter.paintStereoMeter(g);
+    g.drawFittedText((valueToDisplay > NEGATIVE_INFINITY) ? juce::String(valueToDisplay, 1) : juce::String("-inf"), 
+                     bounds,
+                     juce::Justification::centred, 
+                     1);
 }
 //==============================================================================
 void Meter::paintMeter(juce::Graphics& g)
 {
+    using namespace juce;
     auto bounds = getBounds();
 
-    g.setColour(juce::Colours::darkgrey);
-    g.drawRect(bounds, 2);
+    g.setColour(Colours::darkgrey);
+    g.drawRect(bounds, 2.0f);
 
-    bounds.reduced(2);
+    //bounds = bounds.reduced(2);
 
-    float remappedPeakDb = juce::jmap<float>(peakDb, NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY());
+    float remappedPeakDb = jmap<float>(peakDb, NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY());
 
-    g.setColour(juce::Colours::white);
+    g.setColour(Colours::white);
     g.fillRect(bounds.withY(remappedPeakDb).withBottom(bounds.getBottom()));
+    // i like this implementation more, especially the last string in this function
 
     decayingValueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
-    g.setColour(decayingValueHolder.getIsOverThreshold() ? juce::Colours::red : juce::Colours::orange);
+    g.setColour(decayingValueHolder.getIsOverThreshold() ? Colours::red : Colours::orange);
 
-    float remappedTick = juce::jmap<float>(decayingValueHolder.getCurrentValue(), NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY());
+    float remappedTick = jmap<float>(decayingValueHolder.getCurrentValue(), NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY());
     g.fillRect(bounds.withY(remappedTick).withHeight(2));
 }
 
@@ -221,7 +193,7 @@ void DbScale::buildBackgroundImage(int dbDivision, juce::Rectangle<int> meterBou
     if (minDb > maxDb)
         std::swap(minDb, maxDb);
 
-    auto bounds = getLocalBounds();
+    auto bounds = getBounds();
     if (bounds.isEmpty())
         return;
 
@@ -232,7 +204,7 @@ void DbScale::buildBackgroundImage(int dbDivision, juce::Rectangle<int> meterBou
     for (auto& tick : getTicks(dbDivision, meterBounds.withY(16), minDb, maxDb))
     {
         gbkgd.drawFittedText(juce::String(tick.db),
-            0, 
+            0,
             tick.y - 17, //JUCE_LIVE_CONSTANT(20),    // 17 is label cell height accounting font size
             getWidth(),
             getHeight() / ((maxDb - minDb) / dbDivision),
@@ -260,10 +232,57 @@ std::vector<Tick> DbScale::getTicks(int dbDivision, juce::Rectangle<int> meterBo
     return tickVector;
 }
 //==============================================================================
-LabelWithBackground::LabelWithBackground(juce::String labelName, juce::String labelText) :
-label(labelName, labelText)
+MacroMeter::MacroMeter(int orientation) :
+    averager(ValueHolderBase::frameRate, NEGATIVE_INFINITY),
+    orientation(orientation)
 { }
 
+MacroMeter::~MacroMeter() { averager.clear(NEGATIVE_INFINITY); }
+
+bool MacroMeter::getOrientation() const { return orientation; }
+
+void MacroMeter::paintMacro(juce::Graphics& g)
+{
+    textMeter.paintTextMeter(g);
+    avgMeter.paintMeter(g);
+    peakMeter.paintMeter(g);
+}
+
+void MacroMeter::update(float level)
+{
+    averager.add(level);
+    avgMeter.update(averager.getAvg());
+    peakMeter.update(level);
+    textMeter.update(level);
+}
+
+void MacroMeter::resized()
+{
+    auto bounds = getBounds();
+    int avgWidth = 20;
+    int peakWidth = 2;
+
+    textMeter.setBounds(bounds.withHeight(16));
+    avgMeter.setBounds(bounds.withY(textMeter.getBottom()).withWidth(avgWidth).withBottom(bounds.getBottom()));
+    peakMeter.setBounds(avgMeter.getBounds().withWidth(peakWidth));
+
+    if (getOrientation() == Left)
+    {
+        avgMeter.setBounds(bounds.withY(textMeter.getBottom()).withWidth(avgWidth).withBottom(bounds.getBottom()));
+        peakMeter.setBounds(avgMeter.getBounds().withX(avgMeter.getRight() + 3).withWidth(peakWidth));
+    }
+    else if (getOrientation() == Right)
+    {
+        peakMeter.setBounds(bounds.withY(textMeter.getBottom()).withWidth(peakWidth).withBottom(bounds.getBottom()));
+        avgMeter.setBounds(peakMeter.getBounds().withX(peakMeter.getRight() + 3).withWidth(avgWidth));
+    }
+}
+
+juce::Rectangle<int> MacroMeter::getAvgMeterBounds() const { return avgMeter.getLocalBounds(); }
+//==============================================================================
+LabelWithBackground::LabelWithBackground(juce::String labelName, juce::String labelText) :
+    label(labelName, labelText)
+{ }
 void LabelWithBackground::paintLabel(juce::Graphics& g)
 {
     g.setColour(juce::Colours::black);
@@ -274,96 +293,61 @@ void LabelWithBackground::paintLabel(juce::Graphics& g)
     g.drawFittedText(label.getText(), getBounds(), juce::Justification::centred, 1);
 }
 //==============================================================================
-MacroMeter::MacroMeter(bool useAverage) : 
-averagerLeft(ValueHolderBase::frameRate, NEGATIVE_INFINITY),
-averagerRight(ValueHolderBase::frameRate, NEGATIVE_INFINITY),
-averageMeasure(useAverage)
-{ }
-
-MacroMeter::~MacroMeter()
-{
-    averagerLeft.clear(NEGATIVE_INFINITY);
-    averagerRight.clear(NEGATIVE_INFINITY);
-}
-
-juce::Rectangle<int> MacroMeter::getLeftMeterBounds() const { return meterLeft.getLocalBounds(); }
-
-bool MacroMeter::isAverageMeasure() const { return averageMeasure; }
-
-void MacroMeter::paintMacro(juce::Graphics& g)
-{
-    g.setColour(juce::Colours::black);
-    g.drawRect(getBounds(), 2);
-
-    textMeterLeft.paintTextMeter(g);
-    textMeterRight.paintTextMeter(g);
-
-    meterLeft.paintMeter(g);
-    meterRight.paintMeter(g);
-}
-
-void MacroMeter::update(float levelLeft, float levelRight)
-{
-    if (isAverageMeasure())
-    {    
-        averagerLeft.add(levelLeft);
-        averagerRight.add(levelRight);
-        meterLeft.update(averagerLeft.getAvg());
-        meterRight.update(averagerRight.getAvg());
-        textMeterLeft.update(averagerLeft.getAvg());
-        textMeterRight.update(averagerRight.getAvg());
-    }
-    else
-    {
-        meterLeft.update(levelLeft);
-        meterRight.update(levelRight);
-        textMeterLeft.update(levelLeft);
-        textMeterRight.update(levelRight);
-    }
-}
-
-void MacroMeter::resized()
-{
-    auto bounds = getBounds();
-    int meterWidth = 25;
-
-    textMeterLeft.setBounds(bounds.withWidth(meterWidth).withHeight(16));
-    textMeterRight.setBounds(textMeterLeft.getBounds().withX(textMeterLeft.getRight() + meterWidth));
-
-    bounds = bounds.withY(textMeterLeft.getBottom()).withBottom(getBottom()).withWidth(meterWidth);
-
-    meterLeft.setBounds(bounds);
-    meterRight.setBounds(bounds.withX(textMeterRight.getX()));
-}
-//==============================================================================
-StereoMeter::StereoMeter(juce::String labelName, juce::String labelText, bool useAverage) :
-label(labelName, labelText),
-macroMeter(useAverage)
-{ }
-
-void StereoMeter::resized()
-{
-    auto bounds = getBounds();
-
-    macroMeter.setBounds(bounds.withHeight(310));
-    dbScale.setBounds(bounds.withX(getX() + 25).withWidth(25));
-    dbScale.buildBackgroundImage(6, macroMeter.getLeftMeterBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
-    label.setBounds(bounds.withY(macroMeter.getBottom()).withHeight(25));
-}
+StereoMeter::StereoMeter(juce::String labelName, juce::String labelText) : label(labelName, labelText) { }
 
 void StereoMeter::update(float levelLeft, float levelRight)
 {
-    macroMeter.update(levelLeft, levelRight);
+    leftMacroMeter.update(levelLeft);
+    rightMacroMeter.update(levelRight);
     repaint();
 }
 
 void StereoMeter::paintStereoMeter(juce::Graphics& g)
 {
-    macroMeter.paintMacro(g);
+    leftMacroMeter.paintMacro(g);
+    rightMacroMeter.paintMacro(g);
     dbScale.paintScale(g);
     label.paintLabel(g);
 }
+
+void StereoMeter::resized()
+{
+    auto bounds = getBounds();
+    auto macroBounds = bounds.withWidth(25).withHeight(310);
+
+    leftMacroMeter.setBounds(macroBounds);
+    rightMacroMeter.setBounds(macroBounds.withX(macroBounds.getX() + leftMacroMeter.getWidth() * 2));
+    dbScale.setBounds(macroBounds.withX(leftMacroMeter.getRight()));
+    dbScale.buildBackgroundImage(6, leftMacroMeter.getAvgMeterBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
+    label.setBounds(bounds.withY(dbScale.getBottom()).withHeight(25));
+}
 //==============================================================================
+PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMCPP_Project10AudioProcessor& p)
+    : AudioProcessorEditor (&p), audioProcessor (p)
+{
+    // Make sure that before the constructor has finished, you've set the
+    // editor's size to whatever you need it to be.
+    addAndMakeVisible(rmsStereoMeter);
+    addAndMakeVisible(peakStereoMeter);
+
+    startTimerHz(ValueHolderBase::frameRate);
+    setSize (700, 572);
+}
+
+PFMCPP_Project10AudioProcessorEditor::~PFMCPP_Project10AudioProcessorEditor()
+{
+}
+
+void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
+{
+    // (Our component is opaque, so we must completely fill the background with a solid colour)
+    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
+    reference = juce::ImageCache::getFromMemory(BinaryData::Reference_png, BinaryData::Reference_pngSize);
+    g.drawImage(reference, getLocalBounds().toFloat(), juce::RectanglePlacement::stretchToFit);
+    rmsStereoMeter.paintStereoMeter(g);
+    peakStereoMeter.paintStereoMeter(g);
+}
+
 void PFMCPP_Project10AudioProcessorEditor::timerCallback()
 {
     if (audioProcessor.audioBufferFifo.pull(buffer))
@@ -374,15 +358,19 @@ void PFMCPP_Project10AudioProcessorEditor::timerCallback()
         }
         auto magDbLeft = juce::Decibels::gainToDecibels(buffer.getMagnitude(0, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
         auto magDbRight = juce::Decibels::gainToDecibels(buffer.getMagnitude(1, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
-        avgStereoMeter.update(magDbLeft, magDbRight);
+
+        auto rmsDbLeft = juce::Decibels::gainToDecibels(buffer.getRMSLevel(0, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
+        auto rmsDbRight = juce::Decibels::gainToDecibels(buffer.getRMSLevel(1, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
+        rmsStereoMeter.update(rmsDbLeft, rmsDbRight);
         peakStereoMeter.update(magDbLeft, magDbRight);
     }
 }
 
 void PFMCPP_Project10AudioProcessorEditor::resized()
 {
-    juce::Rectangle<int> macroBounds{ 10, 10, 75, 335 };
-
-    avgStereoMeter.setBounds(macroBounds);
-    peakStereoMeter.setBounds(macroBounds.withX(getRight() - macroBounds.getWidth() - 10));
+    // This is generally where you'll want to lay out the positions of any
+    // subcomponents in your editor..
+    juce::Rectangle<int> stereoMeterBounds{ 10, 10, 75, 325 };
+    rmsStereoMeter.setBounds(stereoMeterBounds);
+    peakStereoMeter.setBounds(stereoMeterBounds.withX(getRight() - stereoMeterBounds.getWidth() - 10));
 }

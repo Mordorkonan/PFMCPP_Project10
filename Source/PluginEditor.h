@@ -109,6 +109,26 @@ private:
     juce::Image bkgd;
 };
 //==============================================================================
+enum Orientation { Left = 0, Right };
+
+struct MacroMeter : juce::Component
+{
+    MacroMeter(int orientation);
+    ~MacroMeter();
+    void paintMacro(juce::Graphics& g);
+    void resized() override;
+    void update(float level);
+    bool getOrientation() const;
+    juce::Rectangle<int> getAvgMeterBounds() const;
+
+private:
+    int orientation;
+    TextMeter textMeter;
+    Meter peakMeter, avgMeter;
+    //DbScale dbScale;
+    Averager<float> averager;
+};
+//==============================================================================
 struct LabelWithBackground : juce::Component
 {
     LabelWithBackground(juce::String labelName, juce::String labelText);
@@ -117,41 +137,24 @@ private:
     juce::Label label;
 };
 //==============================================================================
-struct MacroMeter : juce::Component
-{
-    explicit MacroMeter(bool useAverage = false);
-    ~MacroMeter();
-    void paintMacro(juce::Graphics& g);
-    void resized() override;
-    void update(float levelLeft, float levelRight);
-    juce::Rectangle<int> getLeftMeterBounds() const;
-    bool isAverageMeasure() const;
-
-private:
-    bool averageMeasure;
-    TextMeter textMeterLeft, textMeterRight;
-    Meter meterLeft, meterRight;
-    Averager<float> averagerLeft, averagerRight;
-};
-//==============================================================================
 struct StereoMeter : juce::Component
 {
-    explicit StereoMeter(juce::String labelName, juce::String labelText, bool useAverage = false);
+    StereoMeter(juce::String labelName, juce::String labelText);
     void paintStereoMeter(juce::Graphics& g);
     void update(float levelLeft, float levelRight);
     void resized() override;
 
 private:
-    MacroMeter macroMeter;
+    MacroMeter leftMacroMeter{ Left }, rightMacroMeter{ Right };
     DbScale dbScale;
     LabelWithBackground label;
 };
 //==============================================================================
-class PFMCPP_Project10AudioProcessorEditor : public juce::AudioProcessorEditor,
-    public juce::Timer
+class PFMCPP_Project10AudioProcessorEditor  : public juce::AudioProcessorEditor,
+                                              public juce::Timer
 {
 public:
-    PFMCPP_Project10AudioProcessorEditor(PFMCPP_Project10AudioProcessor&);
+    PFMCPP_Project10AudioProcessorEditor (PFMCPP_Project10AudioProcessor&);
     ~PFMCPP_Project10AudioProcessorEditor() override;
 
     //==============================================================================
@@ -163,12 +166,10 @@ private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     PFMCPP_Project10AudioProcessor& audioProcessor;
-
     juce::AudioBuffer<float> buffer;
-    juce::Image referenceImage;
-
-    StereoMeter peakStereoMeter { "L PEAK R", "L PEAK R", false },
-                avgStereoMeter { "L RMS R", "L RMS R", true };
+    juce::Image reference;
+    StereoMeter rmsStereoMeter{ "L RMS R", "L RMS R" },
+                peakStereoMeter{ "L PEAK R", "L PEAK R" };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)
 };
