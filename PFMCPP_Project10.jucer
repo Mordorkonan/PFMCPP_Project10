@@ -4,6 +4,9 @@
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" companyName="MordorkonanTestCompany">
   <MAINGROUP id="bElXU7" name="PFMCPP_Project10">
     <GROUP id="{7972593D-E12A-4264-9D10-05B48DDB7490}" name="Source">
+      <GROUP id="{0C510474-CE92-614B-0314-C2971C0B1824}" name="Assets">
+        <FILE id="SGYrAQ" name="Reference.png" compile="0" resource="1" file="Source/Assets/Reference.png"/>
+      </GROUP>
       <FILE id="z08k8N" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="GPIHEB" name="PluginProcessor.h" compile="0" resource="0"
