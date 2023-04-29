@@ -127,6 +127,56 @@ private:
     std::array<T, Size> buffer;
 };
 
+//==============================================================================
+template<typename T>
+struct ReadAllAfterWriteCircularBuffer
+{
+    //using DataType = some std container type that holds instances of T;
+    using DataType = std::vector<T>;
+    ReadAllAfterWriteCircularBuffer(T fillValue) { data.resize(1, fillValue); }
+
+    void resize(std::size_t s, T fillValue) { data.resize(s, fillValue); }
+
+    void clear(T fillValue)
+    {
+        // another solution is to push elements to the 0 index and move data till size
+        // then delete oldest element from the end to prevent increasing size of vector
+        auto size = data.size();
+        data.clear();
+        data.resize(size, fillValue);
+    }
+    void write(T t)
+    {
+        auto index = writeIndex.load();
+        data[index] = t;
+        ++index;
+        if (index == data.size())
+        {
+            index = 0;
+        }
+        atomic.store(index);
+    }
+
+    DataType& getData() { return data; }
+
+    size_t getReadIndex() const
+    {
+        auto readIndex = writeIndex.load();
+        if (readIndex == data.size())
+        {
+            return 0;
+        }
+
+        return readIndex;
+    }
+    size_t getSize() const { return data.size(); }
+
+private:
+    void resetWriteIndex() { writeIndex.store(0); }
+    std::atomic<std::size_t> writeIndex{ 0 };
+    DataType data;
+};
+//==============================================================================
 class PFMCPP_Project10AudioProcessor  : public juce::AudioProcessor
                             #if JucePlugin_Enable_ARA
                              , public juce::AudioProcessorARAExtension
