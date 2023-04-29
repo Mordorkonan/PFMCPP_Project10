@@ -322,6 +322,85 @@ void StereoMeter::resized()
     label.setBounds(bounds.withY(dbScale.getBottom()).withHeight(25));
 }
 //==============================================================================
+Histogram::Histogram(const juce::String& title_) : title(title_) { }
+
+void Histogram::paint(juce::Graphics& g)
+{
+    g.setColour(juce::Colours::black);
+    g.fillRect(getBounds());
+    g.drawText(title, getBounds(), juce::Justification::centredBottom);
+    displayPath(g, getBounds().toFloat());
+}
+
+void Histogram::resized()
+{
+    buffer.resize(getWidth(), NEGATIVE_INFINITY);
+}
+
+void Histogram::mouseDown(const juce::MouseEvent& e)
+{
+    buffer.clear(NEGATIVE_INFINITY);
+    repaint();
+}
+
+void Histogram::update(float value)
+{
+    buffer.write(static_cast<size_t>(value));
+    repaint();
+}
+
+void Histogram::displayPath(juce::Graphics& g, juce::Rectangle<float> bounds)
+{
+    juce::Path fill = buildPath(path, buffer, getBounds().toFloat());
+    if (!fill.isEmpty())
+    {
+        g.setColour(juce::Colours::white.withAlpha(0.15f));
+        g.fillPath(fill);
+        g.setColour(juce::Colours::green);
+        g.strokePath(path, // ? maybe fill
+                     juce::PathStrokeType(1));
+    }
+}
+
+juce::Path Histogram::buildPath(juce::Path& p,
+                                ReadAllAfterWriteCircularBuffer<float>& buffer,
+                                juce::Rectangle<float> bounds)
+{
+    p.clear();
+    auto size = buffer.getSize();
+    auto bottom = bounds.getBottom();
+    auto& data = buffer.getData();
+    auto readIndex = buffer.getReadIndex();
+    int x = 0;
+
+    auto map = [&bottom](float db) -> float
+        { return juce::jmap(db, NEGATIVE_INFINITY, MAX_DECIBELS, bottom, 0.0f); };
+
+    auto increment = [&readIndex, &size](size_t readIndex)
+    {
+        if (readIndex == size - 1) { readIndex = 0; }
+        else { ++readIndex; }
+    };
+
+    p.startNewSubPath(x, map(data[readIndex]));
+    ++readIndex;
+    ++x;
+
+    for (int x = 1; x < bounds.getWidth(); ++x)
+    {
+        p.lineTo(x, map(data[readIndex]));
+        increment(readIndex);
+    }
+    
+    if (p.getBounds().isEmpty()) { p.clear(); return p; }
+
+    auto fill = p;
+    fill.lineTo(bounds.getBottomRight());
+    fill.lineTo(bounds.getBottomLeft());
+    fill.closeSubPath();
+    return fill;
+}
+//==============================================================================
 PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMCPP_Project10AudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {

@@ -150,6 +150,26 @@ private:
     LabelWithBackground label;
 };
 //==============================================================================
+struct Histogram : juce::Component
+{
+    Histogram(const juce::String& title_);
+
+    void paint(juce::Graphics& g) override;
+    void resized() override;
+    void mouseDown(const juce::MouseEvent& e) override;
+    void update(float value);
+private:
+    ReadAllAfterWriteCircularBuffer<float> buffer{ float(NEGATIVE_INFINITY) };
+    juce::Path path;
+
+    void displayPath(juce::Graphics& g, juce::Rectangle<float> bounds);
+
+    static juce::Path buildPath(juce::Path& p,
+                                ReadAllAfterWriteCircularBuffer<float>& buffer,
+                                juce::Rectangle<float> bounds);
+    const juce::String title;
+};
+//==============================================================================
 class PFMCPP_Project10AudioProcessorEditor  : public juce::AudioProcessorEditor,
                                               public juce::Timer
 {

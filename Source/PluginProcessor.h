@@ -139,14 +139,19 @@ struct ReadAllAfterWriteCircularBuffer
 
     void clear(T fillValue)
     {
-        // another solution is to push elements to the 0 index and move data till size
-        // then delete oldest element from the end to prevent increasing size of vector
-        auto size = data.size();
-        data.clear();
-        data.resize(size, fillValue);
+        //// use for loop if works bad
+        //auto size = data.size();
+        //data.clear();
+        //data.resize(size, fillValue);
+        for (int i = 0; i < data.size(); ++i)
+        {
+            data[i] = fillValue;
+        }
     }
     void write(T t)
     {
+        // another solution is to push elements to the 0 index and move data till size
+        // then delete oldest element from the end to prevent increasing size of vector
         auto index = writeIndex.load();
         data[index] = t;
         ++index;
