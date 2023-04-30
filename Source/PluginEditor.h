@@ -183,6 +183,7 @@ private:
     juce::Point<float> center;
     juce::Array<juce::String> chars { "+S", "L", "M", "R", "-S" };
     juce::Image bkgd;
+    bool splitPath{ false };
 
     void drawBackground();
 };

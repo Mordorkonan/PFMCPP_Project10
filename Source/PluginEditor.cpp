@@ -329,7 +329,7 @@ void Histogram::paintHisto(juce::Graphics& g)
     g.setColour(juce::Colours::darkgrey);
     g.drawText(title, getBounds(), juce::Justification::centredBottom);
 
-    displayPath(g, getBounds().toFloat());
+    displayPath(g, getBounds().toFloat().reduced(1));
 }
 
 void Histogram::resized() { buffer.resize(getWidth(), NEGATIVE_INFINITY); }
@@ -408,12 +408,12 @@ void Goniometer::resized()
 void Goniometer::paintGoniometer(juce::Graphics& g)
 {
     p.clear();
-    if (buffer.getNumSamples() >= 256) { internalBuffer.makeCopyOf(buffer); }
-    else { internalBuffer.applyGain(juce::Decibels::decibelsToGain(-3.0f)); }
+    if (buffer.getNumSamples() >= JUCE_LIVE_CONSTANT(400)) { internalBuffer.makeCopyOf(buffer); } // 256
+    else { internalBuffer.applyGain(juce::Decibels::decibelsToGain(-2.0f)); }
     
     g.drawImage(bkgd, getBounds().toFloat());
-
-    juce::Rectangle<float> data;
+    
+    juce::Line<float> limitDistance{ getBounds().toFloat().getCentre(), getBounds().toFloat().getCentre() };
 
     auto map = [&](float value, float min, float max) -> float
     {
@@ -421,16 +421,15 @@ void Goniometer::paintGoniometer(juce::Graphics& g)
         value = juce::jmap(value,
                            -amplitude,
                            amplitude,
-                            //NEGATIVE_INFINITY,
-                            //MAX_DECIBELS,
+                           //NEGATIVE_INFINITY,
+                           //MAX_DECIBELS,
                            min,
                            max);
 
         return value;
     };
 
-
-    for (int i = 0; i < internalBuffer.getNumSamples(); i += 3)
+    for (int i = 0; i < internalBuffer.getNumSamples(); i += 2)
     {
         auto left = internalBuffer.getSample(0, i);
         auto right = internalBuffer.getSample(1, i);
@@ -438,20 +437,39 @@ void Goniometer::paintGoniometer(juce::Graphics& g)
         auto side = (left - right) * juce::Decibels::decibelsToGain(-3.0f);
         //auto mid = juce::Decibels::gainToDecibels((left + right) * juce::Decibels::decibelsToGain(-3.0f));
         //auto side = juce::Decibels::gainToDecibels((left - right) * juce::Decibels::decibelsToGain(-3.0f));
-        data.setBounds(left, right, mid, side);
         auto reducedBounds = getBounds().reduced(25).toFloat();
 
         juce::Point<float> node{ map(side, reducedBounds.getRight(), reducedBounds.getX()),
-                                    map(mid, reducedBounds.getBottom(), reducedBounds.getY()) };
+                                 map(mid, reducedBounds.getBottom(), reducedBounds.getY()) };
 
-        if (i == 0) { p.startNewSubPath(node); }
-        else { p.lineTo(node); }
+
+        // Lissajous curve limitation criteria
+        limitDistance.setEnd(node);
+
+        float a = limitDistance.getLength();
+        float b = reducedBounds.getHeight() / 2;
+
+        if (limitDistance.getLength() <= reducedBounds.getHeight() / 2)
+        {
+            if (splitPath)
+            {
+                splitPath = false;
+                p.startNewSubPath(node);
+            }
+            else
+            {
+                if (i == 0) { p.startNewSubPath(node); }
+                else { p.lineTo(node); }
+            }
+        }
+        else
+        {
+            splitPath = true;
+        }
     }
 
     g.setColour(juce::Colours::white);
-    g.strokePath(p, juce::PathStrokeType(2));
-    g.drawText(getBounds().reduced(25).toString(), getBounds(), juce::Justification::centredBottom);
-
+    g.strokePath(p, juce::PathStrokeType(1));
 }
 
 void Goniometer::drawBackground()
@@ -543,6 +561,12 @@ void PFMCPP_Project10AudioProcessorEditor::timerCallback()
 
         auto rmsDbLeft = juce::Decibels::gainToDecibels(buffer.getRMSLevel(0, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
         auto rmsDbRight = juce::Decibels::gainToDecibels(buffer.getRMSLevel(1, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
+
+        magDbLeft = juce::jlimit(NEGATIVE_INFINITY, MAX_DECIBELS, magDbLeft);
+        magDbRight = juce::jlimit(NEGATIVE_INFINITY, MAX_DECIBELS, magDbRight);
+
+        rmsDbLeft = juce::jlimit(NEGATIVE_INFINITY, MAX_DECIBELS, rmsDbLeft);
+        rmsDbRight = juce::jlimit(NEGATIVE_INFINITY, MAX_DECIBELS, rmsDbRight);
 
         rmsStereoMeter.update(rmsDbLeft, rmsDbRight);
         peakStereoMeter.update(magDbLeft, magDbRight);
