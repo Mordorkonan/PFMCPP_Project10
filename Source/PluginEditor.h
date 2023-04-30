@@ -174,7 +174,6 @@ struct Goniometer : juce::Component
     Goniometer(juce::AudioBuffer<float>& buffer);
     void paintGoniometer(juce::Graphics& g);
     void resized() override;
-    //void paint(juce::Graphics& g) override;
 
 private:
     juce::AudioBuffer<float>& buffer;
@@ -185,7 +184,6 @@ private:
     juce::Array<juce::String> chars { "+S", "L", "M", "R", "-S" };
     juce::Image bkgd;
 
-    //void drawBackground(juce::Graphics& g);
     void drawBackground();
 };
 //==============================================================================
