@@ -29,8 +29,6 @@ void ValueHolderBase::timerCallback()
 
 float ValueHolderBase::getCurrentValue() const { return currentValue; }
 
-//int ValueHolderBase::getFrameRate() const { return frameRate; }
-
 bool ValueHolderBase::getIsOverThreshold() const { return currentValue > threshold; }
 
 void ValueHolderBase::setHoldTime(int ms) { holdTime = ms; }
@@ -322,6 +320,81 @@ void StereoMeter::resized()
     label.setBounds(bounds.withY(dbScale.getBottom()).withHeight(25));
 }
 //==============================================================================
+Histogram::Histogram(const juce::String& title_) : title(title_) { }
+
+void Histogram::paintHisto(juce::Graphics& g)
+{
+    g.setColour(juce::Colours::black);
+    g.fillRect(getBounds());
+    g.setColour(juce::Colours::darkgrey);
+    g.drawText(title, getBounds(), juce::Justification::centredBottom);
+
+    displayPath(g, getBounds().toFloat());
+}
+
+void Histogram::resized() { buffer.resize(getWidth(), NEGATIVE_INFINITY); }
+
+void Histogram::mouseDown(const juce::MouseEvent& e)
+{
+    buffer.clear(NEGATIVE_INFINITY);
+    repaint();
+}
+
+void Histogram::update(float value)
+{
+    buffer.write(value);
+    repaint();
+}
+
+void Histogram::displayPath(juce::Graphics& g, juce::Rectangle<float> bounds)
+{
+    juce::Path fill = buildPath(path, buffer, bounds);
+    if (!fill.isEmpty())
+    {
+        g.setColour(juce::Colours::white.withAlpha(0.15f));
+        g.fillPath(fill);
+        g.setColour(juce::Colours::white);
+        g.strokePath(path,
+                     juce::PathStrokeType(1));
+    }
+}
+
+juce::Path Histogram::buildPath(juce::Path& p,
+                                ReadAllAfterWriteCircularBuffer<float>& buffer,
+                                juce::Rectangle<float> bounds)
+{
+    p.clear();
+    auto size = buffer.getSize();
+    auto& data = buffer.getData();
+    auto readIndex = buffer.getReadIndex();
+
+    auto map = [&bounds](float db) -> float
+        { return juce::jmap(db, NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY()); };
+
+    auto increment = [&size](size_t& readIndex)
+    {
+        if (readIndex == size - 1) { readIndex = 0; }
+        else { ++readIndex; }
+    };
+
+    p.startNewSubPath(bounds.getX(), map(data[readIndex]));
+    increment(readIndex);
+
+    for (int x = 1; x < bounds.getWidth(); ++x)
+    {
+        p.lineTo(bounds.getX() + x, map(data[readIndex]));
+        increment(readIndex);
+    }
+    
+    if (p.getBounds().isEmpty()) { p.clear(); return p; }
+
+    auto fill = p;
+    fill.lineTo(bounds.getBottomRight());
+    fill.lineTo(bounds.getBottomLeft());
+    fill.closeSubPath();
+    return fill;
+}
+//==============================================================================
 PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMCPP_Project10AudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
@@ -329,6 +402,9 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     // editor's size to whatever you need it to be.
     addAndMakeVisible(rmsStereoMeter);
     addAndMakeVisible(peakStereoMeter);
+
+    addAndMakeVisible(rmsHistogram);
+    addAndMakeVisible(peakHistogram);
 
     startTimerHz(ValueHolderBase::frameRate);
     setSize (700, 572);
@@ -341,28 +417,35 @@ PFMCPP_Project10AudioProcessorEditor::~PFMCPP_Project10AudioProcessorEditor()
 void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
+
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
     reference = juce::ImageCache::getFromMemory(BinaryData::Reference_png, BinaryData::Reference_pngSize);
     g.drawImage(reference, getLocalBounds().toFloat(), juce::RectanglePlacement::stretchToFit);
+
     rmsStereoMeter.paintStereoMeter(g);
     peakStereoMeter.paintStereoMeter(g);
+
+    rmsHistogram.paintHisto(g);
+    peakHistogram.paintHisto(g);
 }
 
 void PFMCPP_Project10AudioProcessorEditor::timerCallback()
 {
     if (audioProcessor.audioBufferFifo.pull(buffer))
     {
-        while (audioProcessor.audioBufferFifo.pull(buffer))
-        {
+        while (audioProcessor.audioBufferFifo.pull(buffer)) { }
 
-        }
         auto magDbLeft = juce::Decibels::gainToDecibels(buffer.getMagnitude(0, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
         auto magDbRight = juce::Decibels::gainToDecibels(buffer.getMagnitude(1, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
 
         auto rmsDbLeft = juce::Decibels::gainToDecibels(buffer.getRMSLevel(0, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
         auto rmsDbRight = juce::Decibels::gainToDecibels(buffer.getRMSLevel(1, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
+
         rmsStereoMeter.update(rmsDbLeft, rmsDbRight);
         peakStereoMeter.update(magDbLeft, magDbRight);
+
+        rmsHistogram.update((rmsDbLeft + rmsDbRight) / 2);
+        peakHistogram.update((magDbLeft + magDbRight) / 2);
     }
 }
 
@@ -373,4 +456,10 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     juce::Rectangle<int> stereoMeterBounds{ 10, 10, 75, 325 };
     rmsStereoMeter.setBounds(stereoMeterBounds);
     peakStereoMeter.setBounds(stereoMeterBounds.withX(getRight() - stereoMeterBounds.getWidth() - 10));
+
+    stereoMeterBounds = stereoMeterBounds.withRight(peakStereoMeter.getRight())
+                                         .withHeight((getHeight() - rmsStereoMeter.getBottom() - 10 * 3) / 2);
+    
+    rmsHistogram.setBounds(stereoMeterBounds.withY(rmsStereoMeter.getBottom() + 10));
+    peakHistogram.setBounds(rmsHistogram.getBounds().withY(rmsHistogram.getBottom() + 10));
 }

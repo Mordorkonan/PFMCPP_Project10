@@ -125,7 +125,6 @@ private:
     int orientation;
     TextMeter textMeter;
     Meter peakMeter, avgMeter;
-    //DbScale dbScale;
     Averager<float> averager;
 };
 //==============================================================================
@@ -150,6 +149,26 @@ private:
     LabelWithBackground label;
 };
 //==============================================================================
+struct Histogram : juce::Component
+{
+    Histogram(const juce::String& title_);
+
+    void paintHisto(juce::Graphics& g);
+    void resized() override;
+    void mouseDown(const juce::MouseEvent& e) override;
+    void update(float value);
+private:
+    ReadAllAfterWriteCircularBuffer<float> buffer{ NEGATIVE_INFINITY };
+    juce::Path path;
+
+    void displayPath(juce::Graphics& g, juce::Rectangle<float> bounds);
+
+    static juce::Path buildPath(juce::Path& p,
+                                ReadAllAfterWriteCircularBuffer<float>& buffer,
+                                juce::Rectangle<float> bounds);
+    const juce::String title;
+};
+//==============================================================================
 class PFMCPP_Project10AudioProcessorEditor  : public juce::AudioProcessorEditor,
                                               public juce::Timer
 {
@@ -170,6 +189,8 @@ private:
     juce::Image reference;
     StereoMeter rmsStereoMeter{ "L RMS R", "L RMS R" },
                 peakStereoMeter{ "L PEAK R", "L PEAK R" };
+
+    Histogram rmsHistogram{ "RMS" }, peakHistogram{ "PEAK" };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)
 };

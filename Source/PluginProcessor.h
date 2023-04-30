@@ -127,6 +127,53 @@ private:
     std::array<T, Size> buffer;
 };
 
+//==============================================================================
+template<typename T>
+struct ReadAllAfterWriteCircularBuffer
+{
+    using DataType = std::vector<T>;
+    ReadAllAfterWriteCircularBuffer(T fillValue) { data.resize(1, fillValue); }
+
+    void resize(std::size_t s, T fillValue)
+    {
+        data.resize(s, fillValue);
+        resetWriteIndex();
+    }
+
+    void clear(T fillValue)
+    {
+        for (int i = 0; i < data.size(); ++i)
+        {
+            data[i] = fillValue;
+        }
+
+        resetWriteIndex();
+    }
+    void write(T t)
+    {
+        auto index = writeIndex.load();
+        data[index] = t;
+        ++index;
+        if (index == data.size())
+        {
+            index = 0;
+        }
+        writeIndex.store(index);
+    }
+
+    DataType& getData() { return data; }
+
+    size_t getReadIndex() const { return writeIndex.load(); }
+
+    size_t getSize() const { return data.size(); }
+
+private:
+    void resetWriteIndex() { writeIndex.store(0); }
+
+    std::atomic<std::size_t> writeIndex{ 0 };
+    DataType data;
+};
+//==============================================================================
 class PFMCPP_Project10AudioProcessor  : public juce::AudioProcessor
                             #if JucePlugin_Enable_ARA
                              , public juce::AudioProcessorARAExtension
