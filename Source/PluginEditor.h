@@ -169,6 +169,26 @@ private:
     const juce::String title;
 };
 //==============================================================================
+struct Goniometer : juce::Component
+{
+    Goniometer(juce::AudioBuffer<float>& buffer);
+    void paintGoniometer(juce::Graphics& g);
+    void resized() override;
+    //void paint(juce::Graphics& g) override;
+
+private:
+    juce::AudioBuffer<float>& buffer;
+    juce::AudioBuffer<float> internalBuffer;
+    juce::Path p;
+    int w{ 0 }, h{ 0 };
+    juce::Point<float> center;
+    juce::Array<juce::String> chars { "+S", "L", "M", "R", "-S" };
+    juce::Image bkgd;
+
+    //void drawBackground(juce::Graphics& g);
+    void drawBackground();
+};
+//==============================================================================
 class PFMCPP_Project10AudioProcessorEditor  : public juce::AudioProcessorEditor,
                                               public juce::Timer
 {
@@ -192,5 +212,8 @@ private:
 
     Histogram rmsHistogram{ "RMS" }, peakHistogram{ "PEAK" };
 
+    Goniometer goniometer { buffer };
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)
 };
+

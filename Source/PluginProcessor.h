@@ -10,7 +10,7 @@
 
 #include <JuceHeader.h>
 
-//#define OSC_GAIN true
+#define OSC_GAIN true
 //==============================================================================
 /**
 */
@@ -222,6 +222,7 @@ public:
 private:
     #if OSC_GAIN
         juce::dsp::Oscillator<float> osc;
+        juce::dsp::Oscillator<float> osc2;
         juce::dsp::Gain<float> gain;
     #endif
     //==============================================================================

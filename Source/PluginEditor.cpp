@@ -395,6 +395,164 @@ juce::Path Histogram::buildPath(juce::Path& p,
     return fill;
 }
 //==============================================================================
+Goniometer::Goniometer(juce::AudioBuffer<float>& buffer) : buffer(buffer) { internalBuffer = juce::AudioBuffer<float>(2, 256); }
+
+void Goniometer::resized()
+{
+    w = getWidth();
+    h = getHeight();
+    center = getLocalBounds().getCentre().toFloat();
+    drawBackground();
+}
+
+void Goniometer::paintGoniometer(juce::Graphics& g)
+{
+    p.clear();
+    internalBuffer.makeCopyOf(buffer);
+    g.drawImage(bkgd, getBounds().toFloat());
+
+    juce::Rectangle<float> data;
+
+    auto map = [&](float value, float min, float max) -> float
+    {
+        auto amplitude = juce::Decibels::decibelsToGain(0.0f);
+        value = juce::jmap(value,
+                           -amplitude,
+                           amplitude,
+                            //NEGATIVE_INFINITY,
+                            //MAX_DECIBELS,
+                           min,
+                           max);
+
+        return value;
+    };
+
+    for (int i = 0; i < internalBuffer.getNumSamples(); i += 3)
+    {
+        auto left = internalBuffer.getSample(0, i);
+        auto right = internalBuffer.getSample(1, i);
+        auto mid = (left + right) * juce::Decibels::decibelsToGain(-3.0f);
+        auto side = (left - right) * juce::Decibels::decibelsToGain(-3.0f);
+        //auto mid = juce::Decibels::gainToDecibels((left + right) * juce::Decibels::decibelsToGain(-3.0f));
+        //auto side = juce::Decibels::gainToDecibels((left - right) * juce::Decibels::decibelsToGain(-3.0f));
+        data.setBounds(left, right, mid, side);
+        auto reducedBounds = getBounds().reduced(25).toFloat();
+
+        juce::Point<float> node{ map(side, reducedBounds.getRight(), reducedBounds.getX()),
+                                 map(mid, reducedBounds.getBottom(), reducedBounds.getY()) };
+
+        if (i == 0) { p.startNewSubPath(node); }
+        else { p.lineTo(node); }
+    }
+
+    g.setColour(juce::Colours::white);
+    g.strokePath(p, juce::PathStrokeType(2));
+    g.drawText(getBounds().reduced(25).toString(), getBounds(), juce::Justification::centredBottom);
+}
+
+//void Goniometer::paint(juce::Graphics& g)
+//{
+//    //drawBackground(g);
+//    //g.drawImage(bkgd, getLocalBounds().toFloat());
+//
+//    p.clear();
+//    internalBuffer.makeCopyOf(buffer);
+//
+//    juce::Rectangle<int> data;
+//
+//    for (int i = 0; i < buffer.getNumSamples(); i += 3)
+//    {
+//        auto left = buffer.getSample(0, i);
+//        auto right = buffer.getSample(1, i);
+//        auto mid = (left + right) * juce::Decibels::decibelsToGain(-3.0f);
+//        auto side = (left - right) * juce::Decibels::decibelsToGain(-3.0f);
+//        data.setBounds(left, right, mid, buffer.getNumSamples());
+//
+//        if (i == 0) { p.startNewSubPath(side, mid); }
+//        else { p.lineTo(side, mid); }
+//    }
+//
+//    p.closeSubPath();
+//
+//    g.setColour(juce::Colours::white);
+//    g.strokePath(p, juce::PathStrokeType(6));
+//    g.drawText(data.toString(), getLocalBounds(), juce::Justification::centred);
+//}
+
+//void Goniometer::drawBackground(juce::Graphics& g)
+//{
+//    auto bounds = getBounds().toFloat();
+//    g.setColour(juce::Colours::black);
+//    g.fillEllipse(getBounds().toFloat());
+//
+//    g.setColour(juce::Colours::darkgrey);
+//    g.drawEllipse(getBounds().toFloat(), 1);
+//
+//    juce::Line<float> axis{ bounds.getX(), center.getY(), bounds.getRight(), center.getY() };
+//
+//    for (int i = 0; i < 4; ++i)
+//    {
+//        axis.applyTransform(juce::AffineTransform::rotation(juce::MathConstants<float>::pi / 4,
+//                                                            center.getX(),
+//                                                            center.getY()));
+//        g.drawLine(axis, 1.0f);
+//    }
+//
+//    axis.applyTransform(juce::AffineTransform::scale(1.1f, 1.1f, center.getX(), center.getY()));
+//    juce::Rectangle<float> charBounds{ 25, 25 };
+//
+//    for (int i = 1; i <= 5; ++i)
+//    {
+//        g.drawText(chars[i - 1],
+//                   charBounds.withCentre(juce::Point<float>(axis.getEndX(), axis.getEndY())),
+//                   juce::Justification::centred);
+//
+//        axis.applyTransform(juce::AffineTransform::rotation(juce::MathConstants<float>::pi / 4,
+//                                                            center.getX(),
+//                                                            center.getY()));
+//    }
+//}
+
+void Goniometer::drawBackground()
+{
+    auto bounds = getLocalBounds().reduced(25).toFloat();
+    
+
+    bkgd = juce::Image(juce::Image::PixelFormat::ARGB, getWidth(), getHeight(), true);
+    juce::Graphics gbkgd(bkgd);
+    gbkgd.addTransform(juce::AffineTransform::scale(juce::Desktop::getInstance().getGlobalScaleFactor()));
+    gbkgd.setColour(juce::Colours::black);
+    gbkgd.fillEllipse(bounds);
+
+    gbkgd.setColour(juce::Colours::darkgrey);
+    gbkgd.drawEllipse(bounds, 1);
+
+    juce::Line<float> axis{ bounds.getX(), center.getY(), bounds.getRight(), center.getY() };
+
+    for (int i = 0; i < 4; ++i)
+    {
+        axis.applyTransform(juce::AffineTransform::rotation(juce::MathConstants<float>::pi / 4,
+            center.getX(),
+            center.getY()));
+        gbkgd.drawLine(axis, 1.0f);
+    }
+
+    axis.applyTransform(juce::AffineTransform::scale(1.1f, 1.1f, center.getX(), center.getY()));
+    juce::Rectangle<float> charBounds{ 25, 25 };
+    gbkgd.setColour(juce::Colours::white);
+
+    for (int i = 1; i <= 5; ++i)
+    {
+        gbkgd.drawText(chars[i - 1],
+            charBounds.withCentre(juce::Point<float>(axis.getEndX(), axis.getEndY())),
+            juce::Justification::centred);
+
+        axis.applyTransform(juce::AffineTransform::rotation(juce::MathConstants<float>::pi / 4,
+            center.getX(),
+            center.getY()));
+    }
+}
+//==============================================================================
 PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMCPP_Project10AudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
@@ -405,6 +563,8 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
 
     addAndMakeVisible(rmsHistogram);
     addAndMakeVisible(peakHistogram);
+
+    addAndMakeVisible(goniometer);
 
     startTimerHz(ValueHolderBase::frameRate);
     setSize (700, 572);
@@ -419,14 +579,17 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
     // (Our component is opaque, so we must completely fill the background with a solid colour)
 
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
-    reference = juce::ImageCache::getFromMemory(BinaryData::Reference_png, BinaryData::Reference_pngSize);
-    g.drawImage(reference, getLocalBounds().toFloat(), juce::RectanglePlacement::stretchToFit);
 
     rmsStereoMeter.paintStereoMeter(g);
     peakStereoMeter.paintStereoMeter(g);
 
     rmsHistogram.paintHisto(g);
     peakHistogram.paintHisto(g);
+
+    goniometer.paintGoniometer(g);
+
+    //reference = juce::ImageCache::getFromMemory(BinaryData::Reference_png, BinaryData::Reference_pngSize);
+    //g.drawImage(reference, getLocalBounds().toFloat(), juce::RectanglePlacement::stretchToFit);
 }
 
 void PFMCPP_Project10AudioProcessorEditor::timerCallback()
@@ -446,6 +609,8 @@ void PFMCPP_Project10AudioProcessorEditor::timerCallback()
 
         rmsHistogram.update((rmsDbLeft + rmsDbRight) / 2);
         peakHistogram.update((magDbLeft + magDbRight) / 2);
+
+        goniometer.repaint();
     }
 }
 
@@ -462,4 +627,9 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     
     rmsHistogram.setBounds(stereoMeterBounds.withY(rmsStereoMeter.getBottom() + 10));
     peakHistogram.setBounds(rmsHistogram.getBounds().withY(rmsHistogram.getBottom() + 10));
+
+    //int gonioSize{ 250 }; 
+    int gonioSize{ 300 };
+    goniometer.setBounds(getWidth() / 2 - gonioSize / 2, gonioSize / 12, gonioSize, gonioSize);
 }
+// FREE FUNCTIONS ==============================================================

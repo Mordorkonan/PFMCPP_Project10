@@ -108,6 +108,10 @@ void PFMCPP_Project10AudioProcessor::prepareToPlay (double sampleRate, int sampl
         osc.prepare(oscSpec);
         osc.setFrequency(440.0f);
 
+        osc2.initialise([](float x) { return std::sin(x); });
+        osc2.prepare(oscSpec);
+        osc2.setFrequency(550.f);
+
         gain.reset();
         gain.prepare(oscSpec);
         gain.setGainDecibels(-24);
@@ -165,16 +169,19 @@ void PFMCPP_Project10AudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         for (int i = 0; i < numSamples; ++i)
         {
             auto sample = osc.processSample(0);
+            auto sample2 = osc2.processSample(0);
             for (int channel = 0; channel < totalNumOutputChannels; ++channel)
             {
-                buffer.setSample(channel, i, sample);
+                //buffer.setSample(channel, i, sample);
+                buffer.setSample(0, i, sample);
+                buffer.setSample(1, i, sample2);
             }
         }
 
         gain.process(gainProcessContext);
     #endif
     audioBufferFifo.push(buffer);
-    //buffer.clear();
+    buffer.clear();
 
     // In case we have more outputs than inputs, this code clears any output
     // channels that didn't contain input data, (because these aren't
