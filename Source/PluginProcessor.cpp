@@ -101,10 +101,11 @@ void PFMCPP_Project10AudioProcessor::prepareToPlay (double sampleRate, int sampl
 
     #if OSC_GAIN
         juce::dsp::ProcessSpec oscSpec;
-        osc.initialise( [] (float x) { return std::sin(x); } );
         oscSpec.sampleRate = sampleRate;
         oscSpec.maximumBlockSize = samplesPerBlock;
         oscSpec.numChannels = getNumInputChannels();
+
+        osc.initialise([](float x) { return std::sin(x); });
         osc.prepare(oscSpec);
         osc.setFrequency(440.0f);
 
@@ -115,6 +116,11 @@ void PFMCPP_Project10AudioProcessor::prepareToPlay (double sampleRate, int sampl
         gain.reset();
         gain.prepare(oscSpec);
         gain.setGainDecibels(-24);
+
+        panner.reset();
+        panner.prepare(oscSpec);
+        panner.setRule(juce::dsp::PannerRule::sin3dB);
+        panner.setPan(0.0f);
     #endif
 }
 
@@ -161,6 +167,7 @@ void PFMCPP_Project10AudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         buffer.clear();
 
         gain.setGainDecibels(JUCE_LIVE_CONSTANT(-24));    // gain
+        panner.setPan(JUCE_LIVE_CONSTANT(0) / 100);
 
         auto audioBlock = juce::dsp::AudioBlock<float>(buffer);
         auto gainProcessContext = juce::dsp::ProcessContextReplacing<float>(audioBlock);
@@ -170,18 +177,19 @@ void PFMCPP_Project10AudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         {
             auto sample = osc.processSample(0);
             auto sample2 = osc2.processSample(0);
-            for (int channel = 0; channel < totalNumOutputChannels; ++channel)
-            {
-                //buffer.setSample(channel, i, sample);
-                buffer.setSample(0, i, sample);
-                buffer.setSample(1, i, sample2);
-            }
+            //for (int channel = 0; channel < totalNumOutputChannels; ++channel)
+            //{
+            //    buffer.setSample(channel, i, sample);
+            //}
+            buffer.setSample(0, i, sample);
+            buffer.setSample(1, i, sample2);
         }
 
         gain.process(gainProcessContext);
+        panner.process(gainProcessContext);
     #endif
     audioBufferFifo.push(buffer);
-    buffer.clear();
+    //buffer.clear();
 
     // In case we have more outputs than inputs, this code clears any output
     // channels that didn't contain input data, (because these aren't
