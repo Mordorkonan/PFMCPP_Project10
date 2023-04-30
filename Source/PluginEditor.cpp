@@ -123,7 +123,7 @@ void TextMeter::paintTextMeter(juce::Graphics& g)
     auto bounds = getBounds();
     juce::Colour textColor { juce::Colours::white };
     auto valueToDisplay = NEGATIVE_INFINITY;
-    valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
+    //valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
     auto now = ValueHolder::getNow();
 
     if  (valueHolder.getIsOverThreshold() || 
@@ -168,7 +168,7 @@ void Meter::paintMeter(juce::Graphics& g)
     g.fillRect(bounds.withY(remappedPeakDb).withBottom(bounds.getBottom()));
     // i like this implementation more, especially the last string in this function
 
-    decayingValueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
+    //decayingValueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
     g.setColour(decayingValueHolder.getIsOverThreshold() ? Colours::red : Colours::orange);
 
     float remappedTick = jmap<float>(decayingValueHolder.getCurrentValue(), NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY());
@@ -421,8 +421,6 @@ void Goniometer::paintGoniometer(juce::Graphics& g)
         value = juce::jmap(value,
                            -amplitude,
                            amplitude,
-                           //NEGATIVE_INFINITY,
-                           //MAX_DECIBELS,
                            min,
                            max);
 
@@ -435,8 +433,6 @@ void Goniometer::paintGoniometer(juce::Graphics& g)
         auto right = internalBuffer.getSample(1, i);
         auto mid = (left + right) * juce::Decibels::decibelsToGain(-3.0f);
         auto side = (left - right) * juce::Decibels::decibelsToGain(-3.0f);
-        //auto mid = juce::Decibels::gainToDecibels((left + right) * juce::Decibels::decibelsToGain(-3.0f));
-        //auto side = juce::Decibels::gainToDecibels((left - right) * juce::Decibels::decibelsToGain(-3.0f));
         auto reducedBounds = getBounds().reduced(25).toFloat();
 
         juce::Point<float> node{ map(side, reducedBounds.getRight(), reducedBounds.getX()),
