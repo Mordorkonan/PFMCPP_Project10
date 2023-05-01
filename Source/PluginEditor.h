@@ -75,7 +75,7 @@ private:
 struct TextMeter : juce::Component
 {
     TextMeter();
-    void paintTextMeter(juce::Graphics& g);
+    void paint(juce::Graphics& g) override;
     ///expects a decibel value
     void update(float valueDb);
 private:
@@ -85,7 +85,7 @@ private:
 //==============================================================================
 struct Meter : juce::Component
 {
-    void paintMeter(juce::Graphics& g);
+    void paint(juce::Graphics& g) override;
     void update(float dbLevel);
 private:
     float peakDb { NEGATIVE_INFINITY };
@@ -101,7 +101,7 @@ struct Tick
 struct DbScale : juce::Component
 {
     ~DbScale() override = default;
-    void paintScale(juce::Graphics& g);
+    void paint(juce::Graphics& g) override;
     void buildBackgroundImage(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb);
     static std::vector<Tick> getTicks(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb);
 
@@ -115,7 +115,6 @@ struct MacroMeter : juce::Component
 {
     MacroMeter(int orientation);
     ~MacroMeter();
-    void paintMacro(juce::Graphics& g);
     void resized() override;
     void update(float level);
     bool getOrientation() const;
@@ -130,16 +129,18 @@ private:
 //==============================================================================
 struct LabelWithBackground : juce::Component
 {
-    LabelWithBackground(juce::String labelName, juce::String labelText);
-    void paintLabel(juce::Graphics& g);
+    LabelWithBackground(juce::String text_);
+    void paint(juce::Graphics& g) override;
+    void drawLabel();
+
 private:
-    juce::Label label;
+    juce::Image label;
+    juce::String text;
 };
 //==============================================================================
 struct StereoMeter : juce::Component
 {
-    StereoMeter(juce::String labelName, juce::String labelText);
-    void paintStereoMeter(juce::Graphics& g);
+    StereoMeter(juce::String labelText);
     void update(float levelLeft, float levelRight);
     void resized() override;
 
@@ -153,7 +154,8 @@ struct Histogram : juce::Component
 {
     Histogram(const juce::String& title_);
 
-    void paintHisto(juce::Graphics& g);
+    //void paintHisto(juce::Graphics& g);
+    void paint(juce::Graphics& g) override;
     void resized() override;
     void mouseDown(const juce::MouseEvent& e) override;
     void update(float value);
@@ -172,7 +174,8 @@ private:
 struct Goniometer : juce::Component
 {
     Goniometer(juce::AudioBuffer<float>& buffer);
-    void paintGoniometer(juce::Graphics& g);
+    //void paintGoniometer(juce::Graphics& g);
+    void paint(juce::Graphics& g) override;
     void resized() override;
 
 private:
@@ -206,8 +209,8 @@ private:
     PFMCPP_Project10AudioProcessor& audioProcessor;
     juce::AudioBuffer<float> buffer;
     juce::Image reference;
-    StereoMeter rmsStereoMeter{ "L RMS R", "L RMS R" },
-                peakStereoMeter{ "L PEAK R", "L PEAK R" };
+    StereoMeter rmsStereoMeter{ "L RMS R" },
+                peakStereoMeter{ "L PEAK R" };
 
     Histogram rmsHistogram{ "RMS" }, peakHistogram{ "PEAK" };
 
