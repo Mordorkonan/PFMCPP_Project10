@@ -143,6 +143,7 @@ struct StereoMeter : juce::Component
     StereoMeter(juce::String labelText);
     void update(float levelLeft, float levelRight);
     void resized() override;
+    void paint(juce::Graphics& g) override;
 
 private:
     MacroMeter leftMacroMeter{ Left }, rightMacroMeter{ Right };
@@ -154,7 +155,6 @@ struct Histogram : juce::Component
 {
     Histogram(const juce::String& title_);
 
-    //void paintHisto(juce::Graphics& g);
     void paint(juce::Graphics& g) override;
     void resized() override;
     void mouseDown(const juce::MouseEvent& e) override;
@@ -174,7 +174,6 @@ private:
 struct Goniometer : juce::Component
 {
     Goniometer(juce::AudioBuffer<float>& buffer);
-    //void paintGoniometer(juce::Graphics& g);
     void paint(juce::Graphics& g) override;
     void resized() override;
 

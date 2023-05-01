@@ -250,23 +250,22 @@ void MacroMeter::update(float level)
     peakMeter.update(level);
     textMeter.update(level);
 }
+
 void MacroMeter::resized()
 {
     auto bounds = getLocalBounds();
-    int avgWidth = 20;
-    int peakWidth = 3;
 
-    textMeter.setBounds(bounds.withHeight(16));
-    avgMeter.setBounds(bounds.withY(textMeter.getBottom()).withWidth(avgWidth).withBottom(getBottom()));
-    peakMeter.setBounds(bounds.withY(textMeter.getBottom()).withWidth(peakWidth).withBottom(getBottom()));
+    textMeter.setBounds(bounds.removeFromTop(16));
 
     if (getOrientation() == Left)
     {
-        peakMeter.setBounds(peakMeter.getBounds().withX(avgMeter.getRight() + 2));
+        avgMeter.setBounds(bounds.removeFromLeft(20));
+        peakMeter.setBounds(bounds.removeFromRight(3));
     }
     else if (getOrientation() == Right)
     {
-        avgMeter.setBounds(avgMeter.getBounds().withX(peakMeter.getRight() + 2));
+        avgMeter.setBounds(bounds.removeFromRight(20));
+        peakMeter.setBounds(bounds.removeFromLeft(3));
     }
 }
 
@@ -299,6 +298,12 @@ StereoMeter::StereoMeter(juce::String labelText) : label(labelText)
     addAndMakeVisible(label);
 }
 
+void StereoMeter::paint(juce::Graphics& g)
+{
+    g.setColour(juce::Colours::red);
+    g.drawRect(getLocalBounds());
+}
+
 void StereoMeter::update(float levelLeft, float levelRight)
 {
     leftMacroMeter.update(levelLeft);
@@ -308,27 +313,31 @@ void StereoMeter::update(float levelLeft, float levelRight)
 
 void StereoMeter::resized()
 {
-    auto bounds = getLocalBounds();
-    auto macroBounds = bounds.withWidth(25).withHeight(300);
+    auto bounds = getLocalBounds().reduced(5);
 
-    leftMacroMeter.setBounds(macroBounds);
-    rightMacroMeter.setBounds(macroBounds.withX(macroBounds.getX() + leftMacroMeter.getWidth() * 2));
-    dbScale.setBounds(macroBounds.withX(leftMacroMeter.getRight()));
-    dbScale.buildBackgroundImage(6, leftMacroMeter.getAvgMeterBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
-    label.setBounds(bounds.withY(dbScale.getBottom()).withHeight(25));
+    label.setBounds(bounds.removeFromBottom(25));
     label.drawLabel();
+
+    leftMacroMeter.setBounds(bounds.removeFromLeft(25));
+    rightMacroMeter.setBounds(bounds.removeFromRight(25));
+    dbScale.setBounds(bounds);
+    dbScale.buildBackgroundImage(6, leftMacroMeter.getAvgMeterBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
 }
 //==============================================================================
 Histogram::Histogram(const juce::String& title_) : title(title_) { }
 
 void Histogram::paint(juce::Graphics& g)
 {
-    g.setColour(juce::Colours::black);
-    g.fillRect(getLocalBounds());
-    g.setColour(juce::Colours::darkgrey);
-    g.drawText(title, getLocalBounds(), juce::Justification::centredBottom);
+    g.setColour(juce::Colours::red);
+    g.drawRect(getLocalBounds());
+    auto bounds = getLocalBounds().reduced(5);
 
-    displayPath(g, getLocalBounds().toFloat().reduced(1));
+    g.setColour(juce::Colours::black);
+    g.fillRect(bounds);
+    g.setColour(juce::Colours::darkgrey);
+    g.drawText(title, bounds, juce::Justification::centredBottom);
+
+    displayPath(g, bounds.toFloat().reduced(1));
 }
 
 void Histogram::resized() { buffer.resize(getWidth(), NEGATIVE_INFINITY); }
@@ -396,22 +405,20 @@ juce::Path Histogram::buildPath(juce::Path& p,
 //==============================================================================
 Goniometer::Goniometer(juce::AudioBuffer<float>& buffer) : buffer(buffer) { internalBuffer = juce::AudioBuffer<float>(2, 256); }
 
-void Goniometer::resized()
-{
-    w = getWidth();
-    h = getHeight();
-    center = getLocalBounds().getCentre().toFloat();
-    drawBackground();
-}
 void Goniometer::paint(juce::Graphics& g)
 {
     p.clear();
     if (buffer.getNumSamples() >= JUCE_LIVE_CONSTANT(400)) { internalBuffer.makeCopyOf(buffer); } // 256
     else { internalBuffer.applyGain(juce::Decibels::decibelsToGain(-2.0f)); }
 
-    g.drawImage(bkgd, getLocalBounds().toFloat());
+    auto bounds = getLocalBounds().withTrimmedLeft((getWidth() - getHeight()) / 2).withTrimmedRight((getWidth() - getHeight()) / 2).toFloat();
 
-    juce::Line<float> limitDistance{ getLocalBounds().toFloat().getCentre(), getLocalBounds().toFloat().getCentre() };
+    g.drawImage(bkgd, bounds);
+
+    g.setColour(juce::Colours::red);
+    g.drawRect(bounds);
+
+    juce::Line<float> limitDistance{ center, center };
 
     auto map = [&](float value, float min, float max) -> float
     {
@@ -430,7 +437,7 @@ void Goniometer::paint(juce::Graphics& g)
         auto right = internalBuffer.getSample(1, i);
         auto mid = (left + right) * juce::Decibels::decibelsToGain(-3.0f);
         auto side = (left - right) * juce::Decibels::decibelsToGain(-3.0f);
-        auto reducedBounds = getLocalBounds().reduced(25).toFloat();
+        auto reducedBounds = bounds.reduced(25).toFloat();
 
         juce::Point<float> node{ map(side, reducedBounds.getRight(), reducedBounds.getX()),
                                  map(mid, reducedBounds.getBottom(), reducedBounds.getY()) };
@@ -438,9 +445,6 @@ void Goniometer::paint(juce::Graphics& g)
 
         // Lissajous curve limitation criteria
         limitDistance.setEnd(node);
-
-        float a = limitDistance.getLength();
-        float b = reducedBounds.getHeight() / 2;
 
         if (limitDistance.getLength() <= reducedBounds.getHeight() / 2)
         {
@@ -467,28 +471,32 @@ void Goniometer::paint(juce::Graphics& g)
 
 void Goniometer::drawBackground()
 {
-    auto bounds = getLocalBounds().reduced(25).toFloat();    
+    auto bounds = getLocalBounds().withWidth(getHeight()).toFloat();
 
-    bkgd = juce::Image(juce::Image::PixelFormat::ARGB, getWidth(), getHeight(), true);
+    bkgd = juce::Image(juce::Image::PixelFormat::ARGB, bounds.getWidth(), bounds.getHeight(), true);
     juce::Graphics gbkgd(bkgd);
     gbkgd.addTransform(juce::AffineTransform::scale(juce::Desktop::getInstance().getGlobalScaleFactor()));
+
+    bounds = bounds.reduced(25);
+
     gbkgd.setColour(juce::Colours::black);
     gbkgd.fillEllipse(bounds);
 
     gbkgd.setColour(juce::Colours::darkgrey);
     gbkgd.drawEllipse(bounds, 1);
 
-    juce::Line<float> axis{ bounds.getX(), center.getY(), bounds.getRight(), center.getY() };
+    juce::Line<float> axis{ bounds.getX(), bounds.getCentreY(), bounds.getRight(), bounds.getCentreY() };
 
     for (int i = 0; i < 4; ++i)
     {
         axis.applyTransform(juce::AffineTransform::rotation(juce::MathConstants<float>::pi / 4,
-            center.getX(),
-            center.getY()));
+            bounds.getCentreX(),
+            bounds.getCentreY()));
+
         gbkgd.drawLine(axis, 1.0f);
     }
 
-    axis.applyTransform(juce::AffineTransform::scale(1.1f, 1.1f, center.getX(), center.getY()));
+    axis.applyTransform(juce::AffineTransform::scale(1.1f, 1.1f, bounds.getCentreX(), bounds.getCentreY()));
     juce::Rectangle<float> charBounds{ 25, 25 };
     gbkgd.setColour(juce::Colours::white);
 
@@ -499,9 +507,16 @@ void Goniometer::drawBackground()
             juce::Justification::centred);
 
         axis.applyTransform(juce::AffineTransform::rotation(juce::MathConstants<float>::pi / 4,
-            center.getX(),
-            center.getY()));
+            bounds.getCentreX(),
+            bounds.getCentreY()));
     }
+}
+
+void Goniometer::resized()
+{
+    w = h = getLocalBounds().getHeight();
+    center = getLocalBounds().getCentre().toFloat();
+    drawBackground();
 }
 //==============================================================================
 PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMCPP_Project10AudioProcessor& p)
@@ -565,18 +580,17 @@ void PFMCPP_Project10AudioProcessorEditor::timerCallback()
 
 void PFMCPP_Project10AudioProcessorEditor::resized()
 {
-    // This is generally where you'll want to lay out the positions of any
-    // subcomponents in your editor..
-    juce::Rectangle<int> stereoMeterBounds{ 10, 10, 75, 325 };
-    rmsStereoMeter.setBounds(stereoMeterBounds);
-    peakStereoMeter.setBounds(stereoMeterBounds.withX(getRight() - stereoMeterBounds.getWidth() - 10));
+    auto bounds = getLocalBounds();
 
-    stereoMeterBounds = stereoMeterBounds.withRight(peakStereoMeter.getRight())
-                                         .withHeight((getHeight() - rmsStereoMeter.getBottom() - 10 * 3) / 2);
-    
-    rmsHistogram.setBounds(stereoMeterBounds.withY(rmsStereoMeter.getBottom() + 10));
-    peakHistogram.setBounds(rmsHistogram.getBounds().withY(rmsHistogram.getBottom() + 10));
+    peakHistogram.setBounds(bounds.removeFromBottom(120));
+    rmsHistogram.setBounds(bounds.removeFromBottom(120));
 
-    int gonioSize{ 300 };
-    goniometer.setBounds(getWidth() / 2 - gonioSize / 2, gonioSize / 12, gonioSize, gonioSize);
+    rmsStereoMeter.setBounds(bounds.removeFromLeft(85));
+    peakStereoMeter.setBounds(bounds.removeFromRight(85));
+
+    //stereoImageMeter.setBounds(bounds);
+    goniometer.setBounds(bounds.removeFromTop(300)
+                               .withTrimmedLeft((getWidth() - getHeight()) / 2)
+                               .withTrimmedRight((getWidth() - getHeight()) / 2));
+
 }
