@@ -417,10 +417,9 @@ void Goniometer::paintGoniometer(juce::Graphics& g)
 
     auto map = [&](float value, float min, float max) -> float
     {
-        auto amplitude = juce::Decibels::decibelsToGain(0.0f);
         value = juce::jmap(value,
-                           -amplitude,
-                           amplitude,
+                           -1.0f,
+                           1.0f,
                            min,
                            max);
 
