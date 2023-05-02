@@ -181,13 +181,10 @@ private:
     juce::AudioBuffer<float>& buffer;
     juce::AudioBuffer<float> internalBuffer;
     juce::Path p;
-    juce::Path limitation;
-    //int w{ 0 }, h{ 0 };
     int radius{ 0 };
     juce::Point<float> center;
     juce::Array<juce::String> chars { "+S", "L", "M", "R", "-S" };
     juce::Image bkgd;
-    bool splitPath{ false };
     float conversionCoefficient{ juce::Decibels::decibelsToGain(-3.0f) };
 
     void drawBackground();

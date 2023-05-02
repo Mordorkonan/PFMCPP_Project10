@@ -443,27 +443,6 @@ void Goniometer::paint(juce::Graphics& g)
         juce::Point<float> node{ map(side, reducedBounds.getRight(), reducedBounds.getX()),
                                  map(mid, reducedBounds.getBottom(), reducedBounds.getY()) };
 
-        // Lissajous curve limitation criteria
-        //limitDistance.setEnd(node);
-
-        //if (limitDistance.getLength() <= radius)
-        //{
-        //    if (splitPath)
-        //    {
-        //        splitPath = false;
-        //        p.startNewSubPath(node);
-        //    }
-        //    else
-        //    {
-        //        if (i == 0) { p.startNewSubPath(node); }
-        //        else { p.lineTo(node); }
-        //    }
-        //}
-        //else
-        //{
-        //    splitPath = true;
-        //}
-
         // Lissajous curve limitation criteria v2
 
         if (center.getDistanceFrom(node) >= radius)
@@ -498,9 +477,6 @@ void Goniometer::drawBackground()
     gbkgd.setColour(juce::Colours::darkgrey);
     gbkgd.drawEllipse(bounds, 1);
 
-    limitation.clear();
-    limitation.addEllipse(bounds);
-
     juce::Line<float> axis{ bounds.getX(), bounds.getCentreY(), bounds.getRight(), bounds.getCentreY() };
 
     for (int i = 0; i < 4; ++i)
@@ -530,7 +506,6 @@ void Goniometer::drawBackground()
 
 void Goniometer::resized()
 {
-    //w = h = getLocalBounds().getHeight();
     radius = getLocalBounds().reduced(25).getHeight() / 2;  // radius of goniometer background
     center = getLocalBounds().getCentre().toFloat();
     drawBackground();
