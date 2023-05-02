@@ -444,24 +444,37 @@ void Goniometer::paint(juce::Graphics& g)
                                  map(mid, reducedBounds.getBottom(), reducedBounds.getY()) };
 
         // Lissajous curve limitation criteria
-        limitDistance.setEnd(node);
+        //limitDistance.setEnd(node);
 
-        if (limitDistance.getLength() <= radius)
+        //if (limitDistance.getLength() <= radius)
+        //{
+        //    if (splitPath)
+        //    {
+        //        splitPath = false;
+        //        p.startNewSubPath(node);
+        //    }
+        //    else
+        //    {
+        //        if (i == 0) { p.startNewSubPath(node); }
+        //        else { p.lineTo(node); }
+        //    }
+        //}
+        //else
+        //{
+        //    splitPath = true;
+        //}
+
+        // Lissajous curve limitation criteria v2
+
+        if (center.getDistanceFrom(node) >= radius)
         {
-            if (splitPath)
-            {
-                splitPath = false;
-                p.startNewSubPath(node);
-            }
-            else
-            {
-                if (i == 0) { p.startNewSubPath(node); }
-                else { p.lineTo(node); }
-            }
+            if (i == 0) { p.startNewSubPath(center.getPointOnCircumference(radius, center.getAngleToPoint(node))); }
+            else { p.lineTo(center.getPointOnCircumference(radius, center.getAngleToPoint(node))); }
         }
         else
-        {
-            splitPath = true;
+        {        
+            if (i == 0) { p.startNewSubPath(node); }
+            else { p.lineTo(node); }
         }
     }
 
