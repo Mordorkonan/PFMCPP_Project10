@@ -431,22 +431,22 @@ void Goniometer::paint(juce::Graphics& g)
         return value;
     };
 
+    auto reducedBounds = bounds.reduced(25).toFloat();
+
     for (int i = 0; i < internalBuffer.getNumSamples(); i += 2)
     {
         auto left = internalBuffer.getSample(0, i);
         auto right = internalBuffer.getSample(1, i);
-        auto mid = (left + right) * juce::Decibels::decibelsToGain(-3.0f);
-        auto side = (left - right) * juce::Decibels::decibelsToGain(-3.0f);
-        auto reducedBounds = bounds.reduced(25).toFloat();
+        auto mid = (left + right) * conversionCoefficient;
+        auto side = (left - right) * conversionCoefficient;
 
         juce::Point<float> node{ map(side, reducedBounds.getRight(), reducedBounds.getX()),
                                  map(mid, reducedBounds.getBottom(), reducedBounds.getY()) };
 
-
         // Lissajous curve limitation criteria
         limitDistance.setEnd(node);
 
-        if (limitDistance.getLength() <= reducedBounds.getHeight() / 2)
+        if (limitDistance.getLength() <= radius)
         {
             if (splitPath)
             {
@@ -485,6 +485,9 @@ void Goniometer::drawBackground()
     gbkgd.setColour(juce::Colours::darkgrey);
     gbkgd.drawEllipse(bounds, 1);
 
+    limitation.clear();
+    limitation.addEllipse(bounds);
+
     juce::Line<float> axis{ bounds.getX(), bounds.getCentreY(), bounds.getRight(), bounds.getCentreY() };
 
     for (int i = 0; i < 4; ++i)
@@ -514,7 +517,8 @@ void Goniometer::drawBackground()
 
 void Goniometer::resized()
 {
-    w = h = getLocalBounds().getHeight();
+    //w = h = getLocalBounds().getHeight();
+    radius = getLocalBounds().reduced(25).getHeight() / 2;  // radius of goniometer background
     center = getLocalBounds().getCentre().toFloat();
     drawBackground();
 }
@@ -588,9 +592,7 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     rmsStereoMeter.setBounds(bounds.removeFromLeft(85));
     peakStereoMeter.setBounds(bounds.removeFromRight(85));
 
-    //stereoImageMeter.setBounds(bounds);
     goniometer.setBounds(bounds.removeFromTop(300)
                                .withTrimmedLeft((getWidth() - getHeight()) / 2)
                                .withTrimmedRight((getWidth() - getHeight()) / 2));
-
 }
