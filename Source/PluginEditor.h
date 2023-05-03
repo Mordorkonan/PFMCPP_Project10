@@ -16,6 +16,9 @@
 //==============================================================================
 /**
 */
+enum Orientation { Left = 0, Right };
+enum MeterMode { Standard = false, Special = true };
+
 struct ValueHolderBase : juce::Timer
 {
     ValueHolderBase();
@@ -85,11 +88,16 @@ private:
 //==============================================================================
 struct Meter : juce::Component
 {
+    Meter(bool mode_ = Standard);
     void paint(juce::Graphics& g) override;
     void update(float dbLevel);
+
 private:
-    float peakDb { NEGATIVE_INFINITY };
+    bool mode;
+    float peak;
     DecayingValueHolder decayingValueHolder;
+
+    void fillMeter(juce::Graphics& g, juce::Rectangle<int> fillBounds);
 };
 //==============================================================================
 struct Tick
@@ -109,8 +117,6 @@ private:
     juce::Image bkgd;
 };
 //==============================================================================
-enum Orientation { Left = 0, Right };
-
 struct MacroMeter : juce::Component
 {
     MacroMeter(int orientation);

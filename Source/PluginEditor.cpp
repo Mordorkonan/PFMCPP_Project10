@@ -151,34 +151,70 @@ void TextMeter::paint(juce::Graphics& g)
         juce::Justification::centred,
         1);
 }
+//==============================================================================
+Meter::Meter(bool mode_) : mode(mode_)
+{
+    peak = mode_ == Standard ? NEGATIVE_INFINITY : 0.0f;
+}
 
 void Meter::paint(juce::Graphics& g)
 {
-    using namespace juce;
     auto bounds = getLocalBounds();
 
-    g.setColour(Colours::darkgrey);
+    g.setColour(juce::Colours::darkgrey);
     g.drawRect(bounds);
 
     bounds = bounds.reduced(1);
+ 
+    if (mode == Standard)
+    {
+        auto remap = [&](float value) -> float
+        {
+            return juce::jmap<float>(value,
+                NEGATIVE_INFINITY,
+                MAX_DECIBELS,
+                bounds.getBottom(),
+                bounds.getY());
+        };
 
-    float remappedPeakDb = jmap<float>(peakDb, NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY());
+        g.setColour(juce::Colours::white);
+        g.fillRect(bounds.withY(remap(peak)).withBottom(bounds.getBottom()));
 
-    g.setColour(Colours::white);
-    g.fillRect(bounds.withY(remappedPeakDb + 1).withBottom(bounds.getBottom() - 1));
-    // i like this implementation more, especially the last string in this function
+        g.setColour(decayingValueHolder.getIsOverThreshold() ? juce::Colours::red : juce::Colours::lime);
+        g.fillRect(bounds.withY(remap(decayingValueHolder.getCurrentValue())).withHeight(2));
+    }
+    else
+    {
+        auto centerX = bounds.toFloat().getCentreX();
+        auto remap = [&](float value) -> float
+        {
+            return juce::jmap<float>(value, -1, 1, bounds.getX(), bounds.getRight());
+        };
 
-    //decayingValueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
-    g.setColour(decayingValueHolder.getIsOverThreshold() ? Colours::red : Colours::orange);
-
-    float remappedTick = jmap<float>(decayingValueHolder.getCurrentValue(), NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY());
-    g.fillRect(bounds.withY(remappedTick).withHeight(2));
+        if (remap(peak) < centerX)
+        {
+            fillMeter(g, bounds.withX(remap(peak)).withRight(centerX));
+        }
+        else
+        {
+            fillMeter(g, bounds.withX(centerX).withRight(remap(peak)));
+        }
+    } 
 }
 
-void Meter::update(float dbLevel)
+void Meter::fillMeter(juce::Graphics& g, juce::Rectangle<int> fillBounds)
 {
-    peakDb = dbLevel;
-    decayingValueHolder.updateHeldValue(peakDb);
+    g.setColour(juce::Colours::white.withAlpha(0.15f));
+    g.fillRect(fillBounds);
+    g.setColour(juce::Colours::white);
+    g.drawRect(fillBounds);
+}
+
+void Meter::update(float Level)
+{
+    peak = Level;
+    decayingValueHolder.updateHeldValue(peak);
+    repaint();
 }
 //==============================================================================
 void DbScale::paint(juce::Graphics& g)
@@ -256,7 +292,7 @@ void MacroMeter::resized()
     auto bounds = getLocalBounds();
 
     textMeter.setBounds(bounds.removeFromTop(16));
-
+    
     if (getOrientation() == Left)
     {
         avgMeter.setBounds(bounds.removeFromLeft(20));
@@ -267,6 +303,7 @@ void MacroMeter::resized()
         avgMeter.setBounds(bounds.removeFromRight(20));
         peakMeter.setBounds(bounds.removeFromLeft(3));
     }
+
 }
 
 juce::Rectangle<int> MacroMeter::getAvgMeterBounds() const { return avgMeter.getLocalBounds(); }
@@ -280,14 +317,15 @@ void LabelWithBackground::paint(juce::Graphics& g)
 
 void LabelWithBackground::drawLabel()
 {
+    auto bounds = getLocalBounds();
     label = juce::Image(juce::Image::PixelFormat::RGB, getWidth(), getHeight(), true);
     juce::Graphics glabel(label);
     glabel.setColour(juce::Colours::black);
-    glabel.fillRect(getLocalBounds());
+    glabel.fillRect(bounds);
     glabel.setColour(juce::Colours::darkgrey);
-    glabel.drawRect(getLocalBounds(), 2);
+    glabel.drawRect(bounds, 2);
     glabel.setFont(18);
-    glabel.drawFittedText(text, getLocalBounds(), juce::Justification::centred, 1);
+    glabel.drawFittedText(text, bounds, juce::Justification::centred, 1);
 }
 //==============================================================================
 StereoMeter::StereoMeter(juce::String labelText) : label(labelText)
