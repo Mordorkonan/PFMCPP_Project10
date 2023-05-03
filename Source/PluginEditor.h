@@ -143,7 +143,6 @@ struct StereoMeter : juce::Component
     StereoMeter(juce::String labelText);
     void update(float levelLeft, float levelRight);
     void resized() override;
-    void paint(juce::Graphics& g) override;
 
 private:
     MacroMeter leftMacroMeter{ Left }, rightMacroMeter{ Right };
@@ -181,23 +180,48 @@ private:
     juce::AudioBuffer<float>& buffer;
     juce::AudioBuffer<float> internalBuffer;
     juce::Path p;
-    juce::Path limitation;
-    //int w{ 0 }, h{ 0 };
-    int radius{ 0 };
     juce::Point<float> center;
     juce::Array<juce::String> chars { "+S", "L", "M", "R", "-S" };
     juce::Image bkgd;
-    bool splitPath{ false };
+    int radius{ 0 };
     float conversionCoefficient{ juce::Decibels::decibelsToGain(-3.0f) };
 
     void drawBackground();
 };
 //==============================================================================
-class PFMCPP_Project10AudioProcessorEditor  : public juce::AudioProcessorEditor,
-                                              public juce::Timer
+struct CorrelationMeter : juce::Component
+{
+    CorrelationMeter(juce::AudioBuffer<float>& buf, double sampleRate);
+    void update();
+    void resized() override;
+    void paint(juce::Graphics& g) override;
+
+private:
+    juce::AudioBuffer<float>& buffer;
+    using FilterType = juce::dsp::FIR::Filter<float>;
+    std::array<FilterType, 3> filters;
+    juce::Array<juce::String> chars{ "-1", "+1" };
+
+    Averager<float> slowAverager{ 1024 * 3, 0 }, peakAverager{ 512, 0 };
+    Meter slowMeter{ Special }, peakMeter{ Special };
+};
+//==============================================================================
+struct StereoImageMeter : juce::Component
+{
+    StereoImageMeter(juce::AudioBuffer<float>& buffer_, double sampleRate);
+    void resized() override;
+    void update();
+
+private:
+    Goniometer goniometer;
+    CorrelationMeter correlationMeter;
+};
+//==============================================================================
+class PFMCPP_Project10AudioProcessorEditor : public juce::AudioProcessorEditor,
+    public juce::Timer
 {
 public:
-    PFMCPP_Project10AudioProcessorEditor (PFMCPP_Project10AudioProcessor&);
+    PFMCPP_Project10AudioProcessorEditor(PFMCPP_Project10AudioProcessor&);
     ~PFMCPP_Project10AudioProcessorEditor() override;
 
     //==============================================================================

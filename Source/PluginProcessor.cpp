@@ -166,7 +166,7 @@ void PFMCPP_Project10AudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         auto numSamples = buffer.getNumSamples();
         buffer.clear();
 
-        gain.setGainDecibels(JUCE_LIVE_CONSTANT(-24));    // gain
+        gain.setGainDecibels(JUCE_LIVE_CONSTANT(-6));    // gain
         panner.setPan(JUCE_LIVE_CONSTANT(0) / 100);
 
         auto audioBlock = juce::dsp::AudioBlock<float>(buffer);
@@ -190,7 +190,7 @@ void PFMCPP_Project10AudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         panner.process(gainProcessContext);
     #endif
     audioBufferFifo.push(buffer);
-    buffer.clear();
+    //buffer.clear();
 
     // In case we have more outputs than inputs, this code clears any output
     // channels that didn't contain input data, (because these aren't

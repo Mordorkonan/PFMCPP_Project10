@@ -298,12 +298,6 @@ StereoMeter::StereoMeter(juce::String labelText) : label(labelText)
     addAndMakeVisible(label);
 }
 
-void StereoMeter::paint(juce::Graphics& g)
-{
-    g.setColour(juce::Colours::red);
-    g.drawRect(getLocalBounds());
-}
-
 void StereoMeter::update(float levelLeft, float levelRight)
 {
     leftMacroMeter.update(levelLeft);
@@ -328,8 +322,6 @@ Histogram::Histogram(const juce::String& title_) : title(title_) { }
 
 void Histogram::paint(juce::Graphics& g)
 {
-    g.setColour(juce::Colours::red);
-    g.drawRect(getLocalBounds());
     auto bounds = getLocalBounds().reduced(5);
 
     g.setColour(juce::Colours::black);
@@ -410,15 +402,10 @@ void Goniometer::paint(juce::Graphics& g)
     p.clear();
     if (buffer.getNumSamples() >= JUCE_LIVE_CONSTANT(400)) { internalBuffer.makeCopyOf(buffer); } // 256
     else { internalBuffer.applyGain(juce::Decibels::decibelsToGain(-2.0f)); }
-
+    
     auto bounds = getLocalBounds().withTrimmedLeft((getWidth() - getHeight()) / 2).withTrimmedRight((getWidth() - getHeight()) / 2).toFloat();
 
     g.drawImage(bkgd, bounds);
-
-    g.setColour(juce::Colours::red);
-    g.drawRect(bounds);
-
-    juce::Line<float> limitDistance{ center, center };
 
     auto map = [&](float value, float min, float max) -> float
     {
@@ -443,27 +430,6 @@ void Goniometer::paint(juce::Graphics& g)
         juce::Point<float> node{ map(side, reducedBounds.getRight(), reducedBounds.getX()),
                                  map(mid, reducedBounds.getBottom(), reducedBounds.getY()) };
 
-        // Lissajous curve limitation criteria
-        //limitDistance.setEnd(node);
-
-        //if (limitDistance.getLength() <= radius)
-        //{
-        //    if (splitPath)
-        //    {
-        //        splitPath = false;
-        //        p.startNewSubPath(node);
-        //    }
-        //    else
-        //    {
-        //        if (i == 0) { p.startNewSubPath(node); }
-        //        else { p.lineTo(node); }
-        //    }
-        //}
-        //else
-        //{
-        //    splitPath = true;
-        //}
-
         // Lissajous curve limitation criteria v2
 
         if (center.getDistanceFrom(node) >= radius)
@@ -477,7 +443,6 @@ void Goniometer::paint(juce::Graphics& g)
             else { p.lineTo(node); }
         }
     }
-
     g.setColour(juce::Colours::white);
     g.strokePath(p, juce::PathStrokeType(1));
 }
@@ -497,9 +462,6 @@ void Goniometer::drawBackground()
 
     gbkgd.setColour(juce::Colours::darkgrey);
     gbkgd.drawEllipse(bounds, 1);
-
-    limitation.clear();
-    limitation.addEllipse(bounds);
 
     juce::Line<float> axis{ bounds.getX(), bounds.getCentreY(), bounds.getRight(), bounds.getCentreY() };
 
@@ -530,10 +492,94 @@ void Goniometer::drawBackground()
 
 void Goniometer::resized()
 {
-    //w = h = getLocalBounds().getHeight();
     radius = getLocalBounds().reduced(25).getHeight() / 2;  // radius of goniometer background
     center = getLocalBounds().getCentre().toFloat();
     drawBackground();
+}
+//==============================================================================
+CorrelationMeter::CorrelationMeter(juce::AudioBuffer<float>& buf, double sampleRate) : buffer(buf)
+{
+    addAndMakeVisible(peakMeter);
+    addAndMakeVisible(slowMeter);
+
+    for (auto& filter : filters)
+    {
+        filter = juce::dsp::FIR::Filter<float>(juce::dsp::FilterDesign<float>
+                                                        ::designFIRLowpassWindowMethod(100.0f,
+                                                                                       sampleRate,
+                                                                                       1,
+                                                                                       juce::dsp::FilterDesign<float>::WindowingMethod::rectangular));
+        filter.reset();        
+    }
+}
+
+void CorrelationMeter::paint(juce::Graphics& g)
+{
+    auto labelWidth = 25;
+    auto labelBounds = getLocalBounds().withWidth(labelWidth).toFloat();
+
+    g.setColour(juce::Colours::white);
+    g.drawText(chars[0], labelBounds, juce::Justification::centred);
+    g.drawText(chars[1], labelBounds.withX(getLocalBounds().getRight() - labelWidth), juce::Justification::centred);
+}
+
+void CorrelationMeter::update()
+{
+    auto getFilteredSample = [&](int filterIndex, int sample1, int sample2) -> float
+    {
+        auto sample = filters[filterIndex].processSample(sample1 * sample2);
+        return sample == 0 ? 1 : sample;
+    };
+    for (int i = 0; i < buffer.getNumSamples(); ++i)
+    {
+        // Pearson fitting criterion
+        float processedSample = filters[0].processSample(buffer.getSample(0, i) * buffer.getSample(1, i)) /
+                                std::sqrt(filters[1].processSample(buffer.getSample(0, i) * buffer.getSample(0, i)) * 
+                                          filters[2].processSample(buffer.getSample(1, i) * buffer.getSample(1, i)));
+
+        if (std::isnan(processedSample))
+        {
+            slowAverager.add(0);
+            peakAverager.add(0);
+        }
+        else
+        {
+            slowAverager.add(processedSample);
+            peakAverager.add(processedSample);
+        }
+    }
+    
+    peakMeter.update(peakAverager.getAvg());
+    slowMeter.update(slowAverager.getAvg());
+}
+
+void CorrelationMeter::resized()
+{
+    auto bounds = getLocalBounds().withX(getLocalBounds().getX() + 25).withRight(getLocalBounds().getRight() - 25);
+    peakMeter.setBounds(bounds.withHeight(3));
+    slowMeter.setBounds(bounds.withY(5).withHeight(20));
+}
+//==============================================================================
+StereoImageMeter::StereoImageMeter(juce::AudioBuffer<float>& buffer_, double sampleRate) :
+goniometer(buffer_),
+correlationMeter(buffer_, sampleRate)
+{
+    addAndMakeVisible(goniometer);
+    addAndMakeVisible(correlationMeter);
+}
+
+void StereoImageMeter::update()
+{
+    correlationMeter.update();
+    goniometer.repaint();
+}
+
+void StereoImageMeter::resized()
+{
+    auto bounds = getLocalBounds();
+
+    goniometer.setBounds(bounds.removeFromTop(300).withTrimmedLeft((getWidth() - getHeight()) / 2).withTrimmedRight((getWidth() - getHeight()) / 2));
+    correlationMeter.setBounds(goniometer.getBounds().withY(goniometer.getBottom() - 10).withHeight(25));
 }
 //==============================================================================
 PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMCPP_Project10AudioProcessor& p)
