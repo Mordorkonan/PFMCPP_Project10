@@ -118,18 +118,18 @@ void TextMeter::update(float valueDb)
     valueHolder.updateHeldValue(cachedValueDb);
 }
 
-void TextMeter::paintTextMeter(juce::Graphics& g)
+void TextMeter::paint(juce::Graphics& g)
 {
-    auto bounds = getBounds();
-    juce::Colour textColor { juce::Colours::white };
+    auto bounds = getLocalBounds();
+    juce::Colour textColor{ juce::Colours::white };
     auto valueToDisplay = NEGATIVE_INFINITY;
-    valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
+    //valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
     auto now = ValueHolder::getNow();
 
-    if  (valueHolder.getIsOverThreshold() || 
+    if (valueHolder.getIsOverThreshold() ||
         (now - valueHolder.getPeakTime() < valueHolder.getHoldTime()) &&
-            valueHolder.getPeakTime() > valueHolder.getHoldTime())     // for plugin launch
-    {   
+        valueHolder.getPeakTime() > valueHolder.getHoldTime())     // for plugin launch
+    {
         g.setColour(juce::Colours::red);
         g.fillRect(bounds);
         textColor = juce::Colours::black;
@@ -146,29 +146,29 @@ void TextMeter::paintTextMeter(juce::Graphics& g)
     g.setColour(textColor);
     g.setFont(12);
 
-    g.drawFittedText((valueToDisplay > NEGATIVE_INFINITY) ? juce::String(valueToDisplay, 1) : juce::String("-inf"), 
-                     bounds,
-                     juce::Justification::centred, 
-                     1);
+    g.drawFittedText((valueToDisplay > NEGATIVE_INFINITY) ? juce::String(valueToDisplay, 1) : juce::String("-inf"),
+        bounds,
+        juce::Justification::centred,
+        1);
 }
-//==============================================================================
-void Meter::paintMeter(juce::Graphics& g)
+
+void Meter::paint(juce::Graphics& g)
 {
     using namespace juce;
-    auto bounds = getBounds();
+    auto bounds = getLocalBounds();
 
     g.setColour(Colours::darkgrey);
-    g.drawRect(bounds, 2.0f);
+    g.drawRect(bounds);
 
-    //bounds = bounds.reduced(2);
+    bounds = bounds.reduced(1);
 
     float remappedPeakDb = jmap<float>(peakDb, NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY());
 
     g.setColour(Colours::white);
-    g.fillRect(bounds.withY(remappedPeakDb).withBottom(bounds.getBottom()));
+    g.fillRect(bounds.withY(remappedPeakDb + 1).withBottom(bounds.getBottom() - 1));
     // i like this implementation more, especially the last string in this function
 
-    decayingValueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
+    //decayingValueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
     g.setColour(decayingValueHolder.getIsOverThreshold() ? Colours::red : Colours::orange);
 
     float remappedTick = jmap<float>(decayingValueHolder.getCurrentValue(), NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY());
@@ -181,9 +181,9 @@ void Meter::update(float dbLevel)
     decayingValueHolder.updateHeldValue(peakDb);
 }
 //==============================================================================
-void DbScale::paintScale(juce::Graphics& g)
+void DbScale::paint(juce::Graphics& g)
 {
-    g.drawImage(bkgd, getBounds().toFloat());
+    g.drawImage(bkgd, getLocalBounds().toFloat());
 }
 
 void DbScale::buildBackgroundImage(int dbDivision, juce::Rectangle<int> meterBounds, int minDb, int maxDb)
@@ -233,18 +233,15 @@ std::vector<Tick> DbScale::getTicks(int dbDivision, juce::Rectangle<int> meterBo
 MacroMeter::MacroMeter(int orientation) :
     averager(ValueHolderBase::frameRate, NEGATIVE_INFINITY),
     orientation(orientation)
-{ }
+{
+    addAndMakeVisible(avgMeter);
+    addAndMakeVisible(peakMeter);
+    addAndMakeVisible(textMeter);
+}
 
 MacroMeter::~MacroMeter() { averager.clear(NEGATIVE_INFINITY); }
 
 bool MacroMeter::getOrientation() const { return orientation; }
-
-void MacroMeter::paintMacro(juce::Graphics& g)
-{
-    textMeter.paintTextMeter(g);
-    avgMeter.paintMeter(g);
-    peakMeter.paintMeter(g);
-}
 
 void MacroMeter::update(float level)
 {
@@ -256,42 +253,56 @@ void MacroMeter::update(float level)
 
 void MacroMeter::resized()
 {
-    auto bounds = getBounds();
-    int avgWidth = 20;
-    int peakWidth = 2;
+    auto bounds = getLocalBounds();
 
-    textMeter.setBounds(bounds.withHeight(16));
-    avgMeter.setBounds(bounds.withY(textMeter.getBottom()).withWidth(avgWidth).withBottom(bounds.getBottom()));
-    peakMeter.setBounds(avgMeter.getBounds().withWidth(peakWidth));
+    textMeter.setBounds(bounds.removeFromTop(16));
 
     if (getOrientation() == Left)
     {
-        avgMeter.setBounds(bounds.withY(textMeter.getBottom()).withWidth(avgWidth).withBottom(bounds.getBottom()));
-        peakMeter.setBounds(avgMeter.getBounds().withX(avgMeter.getRight() + 3).withWidth(peakWidth));
+        avgMeter.setBounds(bounds.removeFromLeft(20));
+        peakMeter.setBounds(bounds.removeFromRight(3));
     }
     else if (getOrientation() == Right)
     {
-        peakMeter.setBounds(bounds.withY(textMeter.getBottom()).withWidth(peakWidth).withBottom(bounds.getBottom()));
-        avgMeter.setBounds(peakMeter.getBounds().withX(peakMeter.getRight() + 3).withWidth(avgWidth));
+        avgMeter.setBounds(bounds.removeFromRight(20));
+        peakMeter.setBounds(bounds.removeFromLeft(3));
     }
 }
 
 juce::Rectangle<int> MacroMeter::getAvgMeterBounds() const { return avgMeter.getLocalBounds(); }
 //==============================================================================
-LabelWithBackground::LabelWithBackground(juce::String labelName, juce::String labelText) :
-    label(labelName, labelText)
-{ }
-void LabelWithBackground::paintLabel(juce::Graphics& g)
+LabelWithBackground::LabelWithBackground(juce::String text_) : text(text_) { }
+
+void LabelWithBackground::paint(juce::Graphics& g)
 {
-    g.setColour(juce::Colours::black);
-    g.fillRect(getBounds());
-    g.setColour(juce::Colours::darkgrey);
-    g.drawRect(getBounds(), 2);
-    g.setFont(18);
-    g.drawFittedText(label.getText(), getBounds(), juce::Justification::centred, 1);
+    g.drawImage(label, getLocalBounds().toFloat());
+}
+
+void LabelWithBackground::drawLabel()
+{
+    label = juce::Image(juce::Image::PixelFormat::RGB, getWidth(), getHeight(), true);
+    juce::Graphics glabel(label);
+    glabel.setColour(juce::Colours::black);
+    glabel.fillRect(getLocalBounds());
+    glabel.setColour(juce::Colours::darkgrey);
+    glabel.drawRect(getLocalBounds(), 2);
+    glabel.setFont(18);
+    glabel.drawFittedText(text, getLocalBounds(), juce::Justification::centred, 1);
 }
 //==============================================================================
-StereoMeter::StereoMeter(juce::String labelName, juce::String labelText) : label(labelName, labelText) { }
+StereoMeter::StereoMeter(juce::String labelText) : label(labelText)
+{
+    addAndMakeVisible(leftMacroMeter);
+    addAndMakeVisible(rightMacroMeter);
+    addAndMakeVisible(dbScale);
+    addAndMakeVisible(label);
+}
+
+void StereoMeter::paint(juce::Graphics& g)
+{
+    g.setColour(juce::Colours::red);
+    g.drawRect(getLocalBounds());
+}
 
 void StereoMeter::update(float levelLeft, float levelRight)
 {
@@ -300,36 +311,33 @@ void StereoMeter::update(float levelLeft, float levelRight)
     repaint();
 }
 
-void StereoMeter::paintStereoMeter(juce::Graphics& g)
-{
-    leftMacroMeter.paintMacro(g);
-    rightMacroMeter.paintMacro(g);
-    dbScale.paintScale(g);
-    label.paintLabel(g);
-}
-
 void StereoMeter::resized()
 {
-    auto bounds = getBounds();
-    auto macroBounds = bounds.withWidth(25).withHeight(310);
+    auto bounds = getLocalBounds().reduced(5);
 
-    leftMacroMeter.setBounds(macroBounds);
-    rightMacroMeter.setBounds(macroBounds.withX(macroBounds.getX() + leftMacroMeter.getWidth() * 2));
-    dbScale.setBounds(macroBounds.withX(leftMacroMeter.getRight()));
+    label.setBounds(bounds.removeFromBottom(25));
+    label.drawLabel();
+
+    leftMacroMeter.setBounds(bounds.removeFromLeft(25));
+    rightMacroMeter.setBounds(bounds.removeFromRight(25));
+    dbScale.setBounds(bounds);
     dbScale.buildBackgroundImage(6, leftMacroMeter.getAvgMeterBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
-    label.setBounds(bounds.withY(dbScale.getBottom()).withHeight(25));
 }
 //==============================================================================
 Histogram::Histogram(const juce::String& title_) : title(title_) { }
 
-void Histogram::paintHisto(juce::Graphics& g)
+void Histogram::paint(juce::Graphics& g)
 {
-    g.setColour(juce::Colours::black);
-    g.fillRect(getBounds());
-    g.setColour(juce::Colours::darkgrey);
-    g.drawText(title, getBounds(), juce::Justification::centredBottom);
+    g.setColour(juce::Colours::red);
+    g.drawRect(getLocalBounds());
+    auto bounds = getLocalBounds().reduced(5);
 
-    displayPath(g, getBounds().toFloat());
+    g.setColour(juce::Colours::black);
+    g.fillRect(bounds);
+    g.setColour(juce::Colours::darkgrey);
+    g.drawText(title, bounds, juce::Justification::centredBottom);
+
+    displayPath(g, bounds.toFloat().reduced(1));
 }
 
 void Histogram::resized() { buffer.resize(getWidth(), NEGATIVE_INFINITY); }
@@ -395,6 +403,139 @@ juce::Path Histogram::buildPath(juce::Path& p,
     return fill;
 }
 //==============================================================================
+Goniometer::Goniometer(juce::AudioBuffer<float>& buffer) : buffer(buffer) { internalBuffer = juce::AudioBuffer<float>(2, 256); }
+
+void Goniometer::paint(juce::Graphics& g)
+{
+    p.clear();
+    if (buffer.getNumSamples() >= JUCE_LIVE_CONSTANT(400)) { internalBuffer.makeCopyOf(buffer); } // 256
+    else { internalBuffer.applyGain(juce::Decibels::decibelsToGain(-2.0f)); }
+
+    auto bounds = getLocalBounds().withTrimmedLeft((getWidth() - getHeight()) / 2).withTrimmedRight((getWidth() - getHeight()) / 2).toFloat();
+
+    g.drawImage(bkgd, bounds);
+
+    g.setColour(juce::Colours::red);
+    g.drawRect(bounds);
+
+    juce::Line<float> limitDistance{ center, center };
+
+    auto map = [&](float value, float min, float max) -> float
+    {
+        value = juce::jmap(value,
+            -1.0f,
+            1.0f,
+            min,
+            max);
+
+        return value;
+    };
+
+    auto reducedBounds = bounds.reduced(25).toFloat();
+
+    for (int i = 0; i < internalBuffer.getNumSamples(); i += 2)
+    {
+        auto left = internalBuffer.getSample(0, i);
+        auto right = internalBuffer.getSample(1, i);
+        auto mid = (left + right) * conversionCoefficient;
+        auto side = (left - right) * conversionCoefficient;
+
+        juce::Point<float> node{ map(side, reducedBounds.getRight(), reducedBounds.getX()),
+                                 map(mid, reducedBounds.getBottom(), reducedBounds.getY()) };
+
+        // Lissajous curve limitation criteria
+        //limitDistance.setEnd(node);
+
+        //if (limitDistance.getLength() <= radius)
+        //{
+        //    if (splitPath)
+        //    {
+        //        splitPath = false;
+        //        p.startNewSubPath(node);
+        //    }
+        //    else
+        //    {
+        //        if (i == 0) { p.startNewSubPath(node); }
+        //        else { p.lineTo(node); }
+        //    }
+        //}
+        //else
+        //{
+        //    splitPath = true;
+        //}
+
+        // Lissajous curve limitation criteria v2
+
+        if (center.getDistanceFrom(node) >= radius)
+        {
+            if (i == 0) { p.startNewSubPath(center.getPointOnCircumference(radius, center.getAngleToPoint(node))); }
+            else { p.lineTo(center.getPointOnCircumference(radius, center.getAngleToPoint(node))); }
+        }
+        else
+        {        
+            if (i == 0) { p.startNewSubPath(node); }
+            else { p.lineTo(node); }
+        }
+    }
+
+    g.setColour(juce::Colours::white);
+    g.strokePath(p, juce::PathStrokeType(1));
+}
+
+void Goniometer::drawBackground()
+{
+    auto bounds = getLocalBounds().withWidth(getHeight()).toFloat();
+
+    bkgd = juce::Image(juce::Image::PixelFormat::ARGB, bounds.getWidth(), bounds.getHeight(), true);
+    juce::Graphics gbkgd(bkgd);
+    gbkgd.addTransform(juce::AffineTransform::scale(juce::Desktop::getInstance().getGlobalScaleFactor()));
+
+    bounds = bounds.reduced(25);
+
+    gbkgd.setColour(juce::Colours::black);
+    gbkgd.fillEllipse(bounds);
+
+    gbkgd.setColour(juce::Colours::darkgrey);
+    gbkgd.drawEllipse(bounds, 1);
+
+    limitation.clear();
+    limitation.addEllipse(bounds);
+
+    juce::Line<float> axis{ bounds.getX(), bounds.getCentreY(), bounds.getRight(), bounds.getCentreY() };
+
+    for (int i = 0; i < 4; ++i)
+    {
+        axis.applyTransform(juce::AffineTransform::rotation(juce::MathConstants<float>::pi / 4,
+            bounds.getCentreX(),
+            bounds.getCentreY()));
+
+        gbkgd.drawLine(axis, 1.0f);
+    }
+
+    axis.applyTransform(juce::AffineTransform::scale(1.1f, 1.1f, bounds.getCentreX(), bounds.getCentreY()));
+    juce::Rectangle<float> charBounds{ 25, 25 };
+    gbkgd.setColour(juce::Colours::white);
+
+    for (int i = 1; i <= 5; ++i)
+    {
+        gbkgd.drawText(chars[i - 1],
+            charBounds.withCentre(juce::Point<float>(axis.getEndX(), axis.getEndY())),
+            juce::Justification::centred);
+
+        axis.applyTransform(juce::AffineTransform::rotation(juce::MathConstants<float>::pi / 4,
+            bounds.getCentreX(),
+            bounds.getCentreY()));
+    }
+}
+
+void Goniometer::resized()
+{
+    //w = h = getLocalBounds().getHeight();
+    radius = getLocalBounds().reduced(25).getHeight() / 2;  // radius of goniometer background
+    center = getLocalBounds().getCentre().toFloat();
+    drawBackground();
+}
+//==============================================================================
 PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMCPP_Project10AudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
@@ -405,6 +546,8 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
 
     addAndMakeVisible(rmsHistogram);
     addAndMakeVisible(peakHistogram);
+
+    addAndMakeVisible(goniometer);
 
     startTimerHz(ValueHolderBase::frameRate);
     setSize (700, 572);
@@ -419,14 +562,9 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
     // (Our component is opaque, so we must completely fill the background with a solid colour)
 
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
-    reference = juce::ImageCache::getFromMemory(BinaryData::Reference_png, BinaryData::Reference_pngSize);
-    g.drawImage(reference, getLocalBounds().toFloat(), juce::RectanglePlacement::stretchToFit);
 
-    rmsStereoMeter.paintStereoMeter(g);
-    peakStereoMeter.paintStereoMeter(g);
-
-    rmsHistogram.paintHisto(g);
-    peakHistogram.paintHisto(g);
+    //reference = juce::ImageCache::getFromMemory(BinaryData::Reference_png, BinaryData::Reference_pngSize);
+    //g.drawImage(reference, getLocalBounds().toFloat(), juce::RectanglePlacement::stretchToFit);
 }
 
 void PFMCPP_Project10AudioProcessorEditor::timerCallback()
@@ -441,25 +579,33 @@ void PFMCPP_Project10AudioProcessorEditor::timerCallback()
         auto rmsDbLeft = juce::Decibels::gainToDecibels(buffer.getRMSLevel(0, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
         auto rmsDbRight = juce::Decibels::gainToDecibels(buffer.getRMSLevel(1, 0, buffer.getNumSamples()), NEGATIVE_INFINITY);
 
+        magDbLeft = juce::jlimit(NEGATIVE_INFINITY, MAX_DECIBELS, magDbLeft);
+        magDbRight = juce::jlimit(NEGATIVE_INFINITY, MAX_DECIBELS, magDbRight);
+
+        rmsDbLeft = juce::jlimit(NEGATIVE_INFINITY, MAX_DECIBELS, rmsDbLeft);
+        rmsDbRight = juce::jlimit(NEGATIVE_INFINITY, MAX_DECIBELS, rmsDbRight);
+
         rmsStereoMeter.update(rmsDbLeft, rmsDbRight);
         peakStereoMeter.update(magDbLeft, magDbRight);
 
         rmsHistogram.update((rmsDbLeft + rmsDbRight) / 2);
         peakHistogram.update((magDbLeft + magDbRight) / 2);
+
+        goniometer.repaint();
     }
 }
 
 void PFMCPP_Project10AudioProcessorEditor::resized()
 {
-    // This is generally where you'll want to lay out the positions of any
-    // subcomponents in your editor..
-    juce::Rectangle<int> stereoMeterBounds{ 10, 10, 75, 325 };
-    rmsStereoMeter.setBounds(stereoMeterBounds);
-    peakStereoMeter.setBounds(stereoMeterBounds.withX(getRight() - stereoMeterBounds.getWidth() - 10));
+    auto bounds = getLocalBounds();
 
-    stereoMeterBounds = stereoMeterBounds.withRight(peakStereoMeter.getRight())
-                                         .withHeight((getHeight() - rmsStereoMeter.getBottom() - 10 * 3) / 2);
-    
-    rmsHistogram.setBounds(stereoMeterBounds.withY(rmsStereoMeter.getBottom() + 10));
-    peakHistogram.setBounds(rmsHistogram.getBounds().withY(rmsHistogram.getBottom() + 10));
+    peakHistogram.setBounds(bounds.removeFromBottom(120));
+    rmsHistogram.setBounds(bounds.removeFromBottom(120));
+
+    rmsStereoMeter.setBounds(bounds.removeFromLeft(85));
+    peakStereoMeter.setBounds(bounds.removeFromRight(85));
+
+    goniometer.setBounds(bounds.removeFromTop(300)
+                               .withTrimmedLeft((getWidth() - getHeight()) / 2)
+                               .withTrimmedRight((getWidth() - getHeight()) / 2));
 }
