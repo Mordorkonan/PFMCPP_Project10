@@ -240,7 +240,7 @@ private:
 
     Histogram rmsHistogram{ "RMS" }, peakHistogram{ "PEAK" };
 
-    Goniometer goniometer { buffer };
+    StereoImageMeter stereoImageMeter{ buffer, audioProcessor.getSampleRate() };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)
 };

@@ -593,10 +593,10 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     addAndMakeVisible(rmsHistogram);
     addAndMakeVisible(peakHistogram);
 
-    addAndMakeVisible(goniometer);
+    addAndMakeVisible(stereoImageMeter);
 
     startTimerHz(ValueHolderBase::frameRate);
-    setSize (700, 572);
+    setSize (700, 570);
 }
 
 PFMCPP_Project10AudioProcessorEditor::~PFMCPP_Project10AudioProcessorEditor()
@@ -637,7 +637,7 @@ void PFMCPP_Project10AudioProcessorEditor::timerCallback()
         rmsHistogram.update((rmsDbLeft + rmsDbRight) / 2);
         peakHistogram.update((magDbLeft + magDbRight) / 2);
 
-        goniometer.repaint();
+        stereoImageMeter.update();
     }
 }
 
@@ -651,7 +651,5 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     rmsStereoMeter.setBounds(bounds.removeFromLeft(85));
     peakStereoMeter.setBounds(bounds.removeFromRight(85));
 
-    goniometer.setBounds(bounds.removeFromTop(300)
-                               .withTrimmedLeft((getWidth() - getHeight()) / 2)
-                               .withTrimmedRight((getWidth() - getHeight()) / 2));
+    stereoImageMeter.setBounds(bounds);
 }
