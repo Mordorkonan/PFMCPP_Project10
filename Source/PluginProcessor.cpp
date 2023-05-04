@@ -111,7 +111,7 @@ void PFMCPP_Project10AudioProcessor::prepareToPlay (double sampleRate, int sampl
 
         osc2.initialise([](float x) { return std::sin(x); });
         osc2.prepare(oscSpec);
-        osc2.setFrequency(550.f);
+        osc2.setFrequency(440.f);
 
         gain.reset();
         gain.prepare(oscSpec);

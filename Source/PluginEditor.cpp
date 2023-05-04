@@ -563,25 +563,21 @@ void CorrelationMeter::paint(juce::Graphics& g)
 
 void CorrelationMeter::update()
 {
-    auto getFilteredSample = [&](int filterIndex, int sample1, int sample2) -> float
-    {
-        auto sample = filters[filterIndex].processSample(sample1 * sample2);
-        return sample == 0 ? 1 : sample;
-    };
     for (int i = 0; i < buffer.getNumSamples(); ++i)
     {
         // Pearson fitting criterion
-        float processedSample = filters[0].processSample(buffer.getSample(0, i) * buffer.getSample(1, i)) /
-                                std::sqrt(filters[1].processSample(buffer.getSample(0, i) * buffer.getSample(0, i)) * 
-                                          filters[2].processSample(buffer.getSample(1, i) * buffer.getSample(1, i)));
+        float sqrt = std::sqrt(filters[1].processSample(buffer.getSample(0, i) * buffer.getSample(0, i)) *
+                               filters[2].processSample(buffer.getSample(1, i) * buffer.getSample(1, i)));
 
-        if (std::isnan(processedSample))
+        if (std::isnan(sqrt) || std::isinf(sqrt) || sqrt == 0)
         {
             slowAverager.add(0);
             peakAverager.add(0);
         }
         else
         {
+            float processedSample = filters[0].processSample(buffer.getSample(0, i) * buffer.getSample(1, i)) / sqrt;
+
             slowAverager.add(processedSample);
             peakAverager.add(processedSample);
         }
