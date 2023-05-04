@@ -545,7 +545,7 @@ CorrelationMeter::CorrelationMeter(juce::AudioBuffer<float>& buf, double sampleR
         filter = juce::dsp::FIR::Filter<float>(juce::dsp::FilterDesign<float>
                                                         ::designFIRLowpassWindowMethod(100.0f,
                                                                                        sampleRate,
-                                                                                       1,
+                                                                                       3,
                                                                                        juce::dsp::FilterDesign<float>::WindowingMethod::rectangular));
         filter.reset();        
     }
