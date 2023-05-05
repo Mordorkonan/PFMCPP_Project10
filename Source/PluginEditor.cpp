@@ -275,32 +275,17 @@ void MacroMeter::resized()
 
 juce::Rectangle<int> MacroMeter::getAvgMeterBounds() const { return avgMeter.getLocalBounds(); }
 //==============================================================================
-LabelWithBackground::LabelWithBackground(juce::String text_) : text(text_) { }
-
-void LabelWithBackground::paint(juce::Graphics& g)
-{
-    g.drawImage(label, getLocalBounds().toFloat());
-}
-
-void LabelWithBackground::drawLabel()
-{
-    auto bounds = getLocalBounds();
-    label = juce::Image(juce::Image::PixelFormat::RGB, getWidth(), getHeight(), true);
-    juce::Graphics glabel(label);
-    glabel.setColour(juce::Colours::black);
-    glabel.fillRect(bounds);
-    glabel.setColour(juce::Colours::darkgrey);
-    glabel.drawRect(bounds, 2);
-    glabel.setFont(18);
-    glabel.drawFittedText(text, bounds, juce::Justification::centred, 1);
-}
-//==============================================================================
-StereoMeter::StereoMeter(juce::String labelText) : label(labelText)
+StereoMeter::StereoMeter(juce::String labelName, juce::String labelText) : label(labelName, labelText)
 {
     addAndMakeVisible(leftMacroMeter);
     addAndMakeVisible(rightMacroMeter);
     addAndMakeVisible(dbScale);
     addAndMakeVisible(label);
+
+    label.setColour(juce::Label::backgroundColourId, juce::Colours::black);
+    label.setColour(juce::Label::outlineColourId, juce::Colours::darkgrey);
+    label.setColour(juce::Label::textColourId, juce::Colours::darkgrey);
+    label.setFont(18);
 }
 
 void StereoMeter::update(float levelLeft, float levelRight)
@@ -315,7 +300,6 @@ void StereoMeter::resized()
     auto bounds = getLocalBounds().reduced(5);
 
     label.setBounds(bounds.removeFromBottom(25));
-    label.drawLabel();
 
     leftMacroMeter.setBounds(bounds.removeFromLeft(25));
     rightMacroMeter.setBounds(bounds.removeFromRight(25));

@@ -128,27 +128,16 @@ private:
     Averager<float> averager;
 };
 //==============================================================================
-struct LabelWithBackground : juce::Component
-{
-    LabelWithBackground(juce::String text_);
-    void paint(juce::Graphics& g) override;
-    void drawLabel();
-
-private:
-    juce::Image label;
-    juce::String text;
-};
-//==============================================================================
 struct StereoMeter : juce::Component
 {
-    StereoMeter(juce::String labelText);
+    StereoMeter(juce::String labelName, juce::String labelText);
     void update(float levelLeft, float levelRight);
     void resized() override;
 
 private:
     MacroMeter leftMacroMeter{ Left }, rightMacroMeter{ Right };
     DbScale dbScale;
-    LabelWithBackground label;
+    juce::Label label;
 };
 //==============================================================================
 struct Histogram : juce::Component
@@ -235,8 +224,8 @@ private:
     PFMCPP_Project10AudioProcessor& audioProcessor;
     juce::AudioBuffer<float> buffer;
     juce::Image reference;
-    StereoMeter rmsStereoMeter{ "L RMS R" },
-                peakStereoMeter{ "L PEAK R" };
+    StereoMeter rmsStereoMeter{ "RMS", "L RMS R" },
+                peakStereoMeter{ "PEAK", "L PEAK R" };
 
     Histogram rmsHistogram{ "RMS" }, peakHistogram{ "PEAK" };
 
