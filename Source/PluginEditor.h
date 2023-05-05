@@ -17,8 +17,7 @@
 /**
 */
 enum Orientation { Left = 0, Right };
-enum MeterMode { Standard = false, Special = true };
-
+//==============================================================================
 struct ValueHolderBase : juce::Timer
 {
     ValueHolderBase();
@@ -88,16 +87,12 @@ private:
 //==============================================================================
 struct Meter : juce::Component
 {
-    Meter(bool mode_ = Standard);
     void paint(juce::Graphics& g) override;
     void update(float dbLevel);
 
 private:
-    bool mode;
-    float peak;
+    float peakDb;
     DecayingValueHolder decayingValueHolder;
-
-    void fillMeter(juce::Graphics& g, juce::Rectangle<int> fillBounds);
 };
 //==============================================================================
 struct Tick
@@ -199,8 +194,8 @@ struct CorrelationMeter : juce::Component
 {
     CorrelationMeter(juce::AudioBuffer<float>& buf, double sampleRate);
     void update();
-    void resized() override;
     void paint(juce::Graphics& g) override;
+    void fillMeter(juce::Graphics& g, juce::Rectangle<float>& bounds, float value, float centerX);
 
 private:
     juce::AudioBuffer<float>& buffer;
@@ -209,7 +204,6 @@ private:
     juce::Array<juce::String> chars{ "-1", "+1" };
 
     Averager<float> slowAverager{ 1024 * 3, 0 }, peakAverager{ 512, 0 };
-    Meter slowMeter{ Special }, peakMeter{ Special };
 };
 //==============================================================================
 struct StereoImageMeter : juce::Component

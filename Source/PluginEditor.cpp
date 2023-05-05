@@ -152,11 +152,6 @@ void TextMeter::paint(juce::Graphics& g)
         1);
 }
 //==============================================================================
-Meter::Meter(bool mode_) : mode(mode_)
-{
-    peak = mode_ == Standard ? NEGATIVE_INFINITY : 0.0f;
-}
-
 void Meter::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds();
@@ -165,55 +160,27 @@ void Meter::paint(juce::Graphics& g)
     g.drawRect(bounds);
 
     bounds = bounds.reduced(1);
- 
-    if (mode == Standard)
+
+    auto remap = [&](float value) -> float
     {
-        auto remap = [&](float value) -> float
-        {
-            return juce::jmap<float>(value,
-                NEGATIVE_INFINITY,
-                MAX_DECIBELS,
-                bounds.getBottom(),
-                bounds.getY());
-        };
+        return juce::jmap<float>(value,
+            NEGATIVE_INFINITY,
+            MAX_DECIBELS,
+            bounds.getBottom(),
+            bounds.getY());
+    };
 
-        g.setColour(juce::Colours::white);
-        g.fillRect(bounds.withY(remap(peak)).withBottom(bounds.getBottom()));
-
-        g.setColour(decayingValueHolder.getIsOverThreshold() ? juce::Colours::red : juce::Colours::lime);
-        g.fillRect(bounds.withY(remap(decayingValueHolder.getCurrentValue())).withHeight(2));
-    }
-    else
-    {
-        auto centerX = bounds.toFloat().getCentreX();
-        auto remap = [&](float value) -> float
-        {
-            return juce::jmap<float>(value, -1, 1, bounds.getX(), bounds.getRight());
-        };
-
-        if (remap(peak) < centerX)
-        {
-            fillMeter(g, bounds.withX(remap(peak)).withRight(centerX));
-        }
-        else
-        {
-            fillMeter(g, bounds.withX(centerX).withRight(remap(peak)));
-        }
-    } 
-}
-
-void Meter::fillMeter(juce::Graphics& g, juce::Rectangle<int> fillBounds)
-{
-    g.setColour(juce::Colours::white.withAlpha(0.15f));
-    g.fillRect(fillBounds);
     g.setColour(juce::Colours::white);
-    g.drawRect(fillBounds);
+    g.fillRect(bounds.withY(remap(peakDb)).withBottom(bounds.getBottom()));
+
+    g.setColour(decayingValueHolder.getIsOverThreshold() ? juce::Colours::red : juce::Colours::lime);
+    g.fillRect(bounds.withY(remap(decayingValueHolder.getCurrentValue())).withHeight(2));
 }
 
 void Meter::update(float Level)
 {
-    peak = Level;
-    decayingValueHolder.updateHeldValue(peak);
+    peakDb = Level;
+    decayingValueHolder.updateHeldValue(peakDb);
     repaint();
 }
 //==============================================================================
@@ -537,9 +504,6 @@ void Goniometer::resized()
 //==============================================================================
 CorrelationMeter::CorrelationMeter(juce::AudioBuffer<float>& buf, double sampleRate) : buffer(buf)
 {
-    addAndMakeVisible(peakMeter);
-    addAndMakeVisible(slowMeter);
-
     for (auto& filter : filters)
     {
         filter = juce::dsp::FIR::Filter<float>(juce::dsp::FilterDesign<float>
@@ -555,10 +519,33 @@ void CorrelationMeter::paint(juce::Graphics& g)
 {
     auto labelWidth = 25;
     auto labelBounds = getLocalBounds().withWidth(labelWidth).toFloat();
+    auto meterBounds = getLocalBounds().toFloat().withTrimmedLeft(labelWidth).withTrimmedRight(labelWidth);
 
+    g.setColour(juce::Colours::darkgrey);
+    g.drawRect(meterBounds.withHeight(3));
+    g.drawRect(meterBounds.withHeight(20).translated(0, 5));
     g.setColour(juce::Colours::white);
     g.drawText(chars[0], labelBounds, juce::Justification::centred);
     g.drawText(chars[1], labelBounds.withX(getLocalBounds().getRight() - labelWidth), juce::Justification::centred);
+
+    auto centerX = meterBounds.toFloat().getCentreX();
+    auto remap = [&](float value) -> float
+    {
+        return juce::jmap<float>(value, -1, 1, meterBounds.getX(), meterBounds.getRight());
+    };
+
+    fillMeter(g, meterBounds.withHeight(3), remap(peakAverager.getAvg()), centerX);
+    fillMeter(g, meterBounds.withHeight(20).translated(0, 5), remap(slowAverager.getAvg()), centerX);
+}
+
+void CorrelationMeter::fillMeter(juce::Graphics & g, juce::Rectangle<float>& bounds, float edgeX1, float edgeX2)
+{
+    if (edgeX1 < edgeX2) { std::swap(edgeX1, edgeX2); }
+    bounds = bounds.withX(edgeX2).withRight(edgeX1);
+    g.setColour(juce::Colours::white.withAlpha(0.15f));
+    g.fillRect(bounds);
+    g.setColour(juce::Colours::white);
+    g.drawRect(bounds);
 }
 
 void CorrelationMeter::update()
@@ -582,16 +569,7 @@ void CorrelationMeter::update()
             peakAverager.add(processedSample);
         }
     }
-    
-    peakMeter.update(peakAverager.getAvg());
-    slowMeter.update(slowAverager.getAvg());
-}
-
-void CorrelationMeter::resized()
-{
-    auto bounds = getLocalBounds().withX(getLocalBounds().getX() + 25).withRight(getLocalBounds().getRight() - 25);
-    peakMeter.setBounds(bounds.withHeight(3));
-    slowMeter.setBounds(bounds.withY(5).withHeight(20));
+    repaint();
 }
 //==============================================================================
 StereoImageMeter::StereoImageMeter(juce::AudioBuffer<float>& buffer_, double sampleRate) :
