@@ -548,13 +548,38 @@ void CorrelationMeter::fillMeter(juce::Graphics & g, juce::Rectangle<float>& bou
     g.drawRect(bounds);
 }
 
+//void CorrelationMeter::update()
+//{
+//    for (int i = 0; i < buffer.getNumSamples(); ++i)
+//    {
+//        // Pearson fitting criterion
+//        float sqrt = std::sqrt(filters[1].processSample(buffer.getSample(0, i) * buffer.getSample(0, i)) *
+//                               filters[2].processSample(buffer.getSample(1, i) * buffer.getSample(1, i)));
+//
+//        if (std::isnan(sqrt) || std::isinf(sqrt) || sqrt == 0)
+//        {
+//            slowAverager.add(0);
+//            peakAverager.add(0);
+//        }
+//        else
+//        {
+//            float processedSample = filters[0].processSample(buffer.getSample(0, i) * buffer.getSample(1, i)) / sqrt;
+//
+//            slowAverager.add(processedSample);
+//            peakAverager.add(processedSample);
+//        }
+//    }
+//    repaint();
+//}
+
 void CorrelationMeter::update()
 {
+    auto bufferData = buffer.getArrayOfReadPointers();
     for (int i = 0; i < buffer.getNumSamples(); ++i)
     {
         // Pearson fitting criterion
-        float sqrt = std::sqrt(filters[1].processSample(buffer.getSample(0, i) * buffer.getSample(0, i)) *
-                               filters[2].processSample(buffer.getSample(1, i) * buffer.getSample(1, i)));
+        float sqrt = std::sqrt(filters[1].processSample(bufferData[0][i] * bufferData[0][i]) *
+            filters[2].processSample(bufferData[1][i] * bufferData[1][i]));
 
         if (std::isnan(sqrt) || std::isinf(sqrt) || sqrt == 0)
         {
@@ -563,7 +588,7 @@ void CorrelationMeter::update()
         }
         else
         {
-            float processedSample = filters[0].processSample(buffer.getSample(0, i) * buffer.getSample(1, i)) / sqrt;
+            float processedSample = filters[0].processSample(bufferData[0][i] * bufferData[1][i]) / sqrt;
 
             slowAverager.add(processedSample);
             peakAverager.add(processedSample);
