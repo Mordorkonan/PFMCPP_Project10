@@ -16,6 +16,8 @@
 //==============================================================================
 /**
 */
+enum Orientation { Left, Right };
+//==============================================================================
 struct ValueHolderBase : juce::Timer
 {
     ValueHolderBase();
@@ -87,8 +89,9 @@ struct Meter : juce::Component
 {
     void paint(juce::Graphics& g) override;
     void update(float dbLevel);
+
 private:
-    float peakDb { NEGATIVE_INFINITY };
+    float peakDb;
     DecayingValueHolder decayingValueHolder;
 };
 //==============================================================================
@@ -109,8 +112,6 @@ private:
     juce::Image bkgd;
 };
 //==============================================================================
-enum Orientation { Left = 0, Right };
-
 struct MacroMeter : juce::Component
 {
     MacroMeter(int orientation);
@@ -127,28 +128,16 @@ private:
     Averager<float> averager;
 };
 //==============================================================================
-struct LabelWithBackground : juce::Component
-{
-    LabelWithBackground(juce::String text_);
-    void paint(juce::Graphics& g) override;
-    void drawLabel();
-
-private:
-    juce::Image label;
-    juce::String text;
-};
-//==============================================================================
 struct StereoMeter : juce::Component
 {
-    StereoMeter(juce::String labelText);
+    StereoMeter(juce::String labelName, juce::String labelText);
     void update(float levelLeft, float levelRight);
     void resized() override;
-    void paint(juce::Graphics& g) override;
 
 private:
     MacroMeter leftMacroMeter{ Left }, rightMacroMeter{ Right };
     DbScale dbScale;
-    LabelWithBackground label;
+    juce::Label label;
 };
 //==============================================================================
 struct Histogram : juce::Component
@@ -181,23 +170,47 @@ private:
     juce::AudioBuffer<float>& buffer;
     juce::AudioBuffer<float> internalBuffer;
     juce::Path p;
-    juce::Path limitation;
-    //int w{ 0 }, h{ 0 };
-    int radius{ 0 };
     juce::Point<float> center;
     juce::Array<juce::String> chars { "+S", "L", "M", "R", "-S" };
     juce::Image bkgd;
-    bool splitPath{ false };
+    int radius{ 0 };
     float conversionCoefficient{ juce::Decibels::decibelsToGain(-3.0f) };
 
     void drawBackground();
 };
 //==============================================================================
-class PFMCPP_Project10AudioProcessorEditor  : public juce::AudioProcessorEditor,
-                                              public juce::Timer
+struct CorrelationMeter : juce::Component
+{
+    CorrelationMeter(juce::AudioBuffer<float>& buf, double sampleRate);
+    void update();
+    void paint(juce::Graphics& g) override;
+    void fillMeter(juce::Graphics& g, juce::Rectangle<float>& bounds, float value, float centerX);
+
+private:
+    juce::AudioBuffer<float>& buffer;
+    using FilterType = juce::dsp::FIR::Filter<float>;
+    std::array<FilterType, 3> filters;
+    juce::Array<juce::String> chars{ "-1", "+1" };
+
+    Averager<float> slowAverager{ 1024 * 3, 0 }, peakAverager{ 512, 0 };
+};
+//==============================================================================
+struct StereoImageMeter : juce::Component
+{
+    StereoImageMeter(juce::AudioBuffer<float>& buffer_, double sampleRate);
+    void resized() override;
+    void update();
+
+private:
+    Goniometer goniometer;
+    CorrelationMeter correlationMeter;
+};
+//==============================================================================
+class PFMCPP_Project10AudioProcessorEditor : public juce::AudioProcessorEditor,
+    public juce::Timer
 {
 public:
-    PFMCPP_Project10AudioProcessorEditor (PFMCPP_Project10AudioProcessor&);
+    PFMCPP_Project10AudioProcessorEditor(PFMCPP_Project10AudioProcessor&);
     ~PFMCPP_Project10AudioProcessorEditor() override;
 
     //==============================================================================
@@ -211,12 +224,12 @@ private:
     PFMCPP_Project10AudioProcessor& audioProcessor;
     juce::AudioBuffer<float> buffer;
     juce::Image reference;
-    StereoMeter rmsStereoMeter{ "L RMS R" },
-                peakStereoMeter{ "L PEAK R" };
+    StereoMeter rmsStereoMeter{ "RMS", "L RMS R" },
+                peakStereoMeter{ "PEAK", "L PEAK R" };
 
     Histogram rmsHistogram{ "RMS" }, peakHistogram{ "PEAK" };
 
-    Goniometer goniometer { buffer };
+    StereoImageMeter stereoImageMeter{ buffer, audioProcessor.getSampleRate() };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)
 };

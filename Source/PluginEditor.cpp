@@ -151,34 +151,37 @@ void TextMeter::paint(juce::Graphics& g)
         juce::Justification::centred,
         1);
 }
-
+//==============================================================================
 void Meter::paint(juce::Graphics& g)
 {
-    using namespace juce;
     auto bounds = getLocalBounds();
 
-    g.setColour(Colours::darkgrey);
+    g.setColour(juce::Colours::darkgrey);
     g.drawRect(bounds);
 
     bounds = bounds.reduced(1);
 
-    float remappedPeakDb = jmap<float>(peakDb, NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY());
+    auto remap = [&](float value) -> float
+    {
+        return juce::jmap<float>(value,
+            NEGATIVE_INFINITY,
+            MAX_DECIBELS,
+            bounds.getBottom(),
+            bounds.getY());
+    };
 
-    g.setColour(Colours::white);
-    g.fillRect(bounds.withY(remappedPeakDb + 1).withBottom(bounds.getBottom() - 1));
-    // i like this implementation more, especially the last string in this function
+    g.setColour(juce::Colours::white);
+    g.fillRect(bounds.withY(remap(peakDb)).withBottom(bounds.getBottom()));
 
-    //decayingValueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
-    g.setColour(decayingValueHolder.getIsOverThreshold() ? Colours::red : Colours::orange);
-
-    float remappedTick = jmap<float>(decayingValueHolder.getCurrentValue(), NEGATIVE_INFINITY, MAX_DECIBELS, bounds.getBottom(), bounds.getY());
-    g.fillRect(bounds.withY(remappedTick).withHeight(2));
+    g.setColour(decayingValueHolder.getIsOverThreshold() ? juce::Colours::red : juce::Colours::lime);
+    g.fillRect(bounds.withY(remap(decayingValueHolder.getCurrentValue())).withHeight(2));
 }
 
-void Meter::update(float dbLevel)
+void Meter::update(float Level)
 {
-    peakDb = dbLevel;
+    peakDb = Level;
     decayingValueHolder.updateHeldValue(peakDb);
+    repaint();
 }
 //==============================================================================
 void DbScale::paint(juce::Graphics& g)
@@ -256,7 +259,7 @@ void MacroMeter::resized()
     auto bounds = getLocalBounds();
 
     textMeter.setBounds(bounds.removeFromTop(16));
-
+    
     if (getOrientation() == Left)
     {
         avgMeter.setBounds(bounds.removeFromLeft(20));
@@ -267,41 +270,22 @@ void MacroMeter::resized()
         avgMeter.setBounds(bounds.removeFromRight(20));
         peakMeter.setBounds(bounds.removeFromLeft(3));
     }
+
 }
 
 juce::Rectangle<int> MacroMeter::getAvgMeterBounds() const { return avgMeter.getLocalBounds(); }
 //==============================================================================
-LabelWithBackground::LabelWithBackground(juce::String text_) : text(text_) { }
-
-void LabelWithBackground::paint(juce::Graphics& g)
-{
-    g.drawImage(label, getLocalBounds().toFloat());
-}
-
-void LabelWithBackground::drawLabel()
-{
-    label = juce::Image(juce::Image::PixelFormat::RGB, getWidth(), getHeight(), true);
-    juce::Graphics glabel(label);
-    glabel.setColour(juce::Colours::black);
-    glabel.fillRect(getLocalBounds());
-    glabel.setColour(juce::Colours::darkgrey);
-    glabel.drawRect(getLocalBounds(), 2);
-    glabel.setFont(18);
-    glabel.drawFittedText(text, getLocalBounds(), juce::Justification::centred, 1);
-}
-//==============================================================================
-StereoMeter::StereoMeter(juce::String labelText) : label(labelText)
+StereoMeter::StereoMeter(juce::String labelName, juce::String labelText) : label(labelName, labelText)
 {
     addAndMakeVisible(leftMacroMeter);
     addAndMakeVisible(rightMacroMeter);
     addAndMakeVisible(dbScale);
     addAndMakeVisible(label);
-}
 
-void StereoMeter::paint(juce::Graphics& g)
-{
-    g.setColour(juce::Colours::red);
-    g.drawRect(getLocalBounds());
+    label.setColour(juce::Label::backgroundColourId, juce::Colours::black);
+    label.setColour(juce::Label::outlineColourId, juce::Colours::darkgrey);
+    label.setColour(juce::Label::textColourId, juce::Colours::darkgrey);
+    label.setFont(18);
 }
 
 void StereoMeter::update(float levelLeft, float levelRight)
@@ -316,7 +300,6 @@ void StereoMeter::resized()
     auto bounds = getLocalBounds().reduced(5);
 
     label.setBounds(bounds.removeFromBottom(25));
-    label.drawLabel();
 
     leftMacroMeter.setBounds(bounds.removeFromLeft(25));
     rightMacroMeter.setBounds(bounds.removeFromRight(25));
@@ -328,8 +311,6 @@ Histogram::Histogram(const juce::String& title_) : title(title_) { }
 
 void Histogram::paint(juce::Graphics& g)
 {
-    g.setColour(juce::Colours::red);
-    g.drawRect(getLocalBounds());
     auto bounds = getLocalBounds().reduced(5);
 
     g.setColour(juce::Colours::black);
@@ -410,15 +391,10 @@ void Goniometer::paint(juce::Graphics& g)
     p.clear();
     if (buffer.getNumSamples() >= JUCE_LIVE_CONSTANT(400)) { internalBuffer.makeCopyOf(buffer); } // 256
     else { internalBuffer.applyGain(juce::Decibels::decibelsToGain(-2.0f)); }
-
+    
     auto bounds = getLocalBounds().withTrimmedLeft((getWidth() - getHeight()) / 2).withTrimmedRight((getWidth() - getHeight()) / 2).toFloat();
 
     g.drawImage(bkgd, bounds);
-
-    g.setColour(juce::Colours::red);
-    g.drawRect(bounds);
-
-    juce::Line<float> limitDistance{ center, center };
 
     auto map = [&](float value, float min, float max) -> float
     {
@@ -443,27 +419,6 @@ void Goniometer::paint(juce::Graphics& g)
         juce::Point<float> node{ map(side, reducedBounds.getRight(), reducedBounds.getX()),
                                  map(mid, reducedBounds.getBottom(), reducedBounds.getY()) };
 
-        // Lissajous curve limitation criteria
-        //limitDistance.setEnd(node);
-
-        //if (limitDistance.getLength() <= radius)
-        //{
-        //    if (splitPath)
-        //    {
-        //        splitPath = false;
-        //        p.startNewSubPath(node);
-        //    }
-        //    else
-        //    {
-        //        if (i == 0) { p.startNewSubPath(node); }
-        //        else { p.lineTo(node); }
-        //    }
-        //}
-        //else
-        //{
-        //    splitPath = true;
-        //}
-
         // Lissajous curve limitation criteria v2
 
         if (center.getDistanceFrom(node) >= radius)
@@ -477,7 +432,6 @@ void Goniometer::paint(juce::Graphics& g)
             else { p.lineTo(node); }
         }
     }
-
     g.setColour(juce::Colours::white);
     g.strokePath(p, juce::PathStrokeType(1));
 }
@@ -497,9 +451,6 @@ void Goniometer::drawBackground()
 
     gbkgd.setColour(juce::Colours::darkgrey);
     gbkgd.drawEllipse(bounds, 1);
-
-    limitation.clear();
-    limitation.addEllipse(bounds);
 
     juce::Line<float> axis{ bounds.getX(), bounds.getCentreY(), bounds.getRight(), bounds.getCentreY() };
 
@@ -530,10 +481,102 @@ void Goniometer::drawBackground()
 
 void Goniometer::resized()
 {
-    //w = h = getLocalBounds().getHeight();
     radius = getLocalBounds().reduced(25).getHeight() / 2;  // radius of goniometer background
     center = getLocalBounds().getCentre().toFloat();
     drawBackground();
+}
+//==============================================================================
+CorrelationMeter::CorrelationMeter(juce::AudioBuffer<float>& buf, double sampleRate) : buffer(buf)
+{
+    for (auto& filter : filters)
+    {
+        filter = juce::dsp::FIR::Filter<float>(juce::dsp::FilterDesign<float>
+                                                        ::designFIRLowpassWindowMethod(100.0f,
+                                                                                       sampleRate,
+                                                                                       3,
+                                                                                       juce::dsp::FilterDesign<float>::WindowingMethod::rectangular));
+        filter.reset();        
+    }
+}
+
+void CorrelationMeter::paint(juce::Graphics& g)
+{
+    auto labelWidth = 25;
+    auto labelBounds = getLocalBounds().withWidth(labelWidth).toFloat();
+    auto meterBounds = getLocalBounds().toFloat().withTrimmedLeft(labelWidth).withTrimmedRight(labelWidth);
+
+    g.setColour(juce::Colours::darkgrey);
+    g.drawRect(meterBounds.withHeight(3));
+    g.drawRect(meterBounds.withHeight(20).translated(0, 5));
+    g.setColour(juce::Colours::white);
+    g.drawText(chars[0], labelBounds, juce::Justification::centred);
+    g.drawText(chars[1], labelBounds.withX(getLocalBounds().getRight() - labelWidth), juce::Justification::centred);
+
+    auto centerX = meterBounds.toFloat().getCentreX();
+    auto remap = [&](float value) -> float
+    {
+        return juce::jmap<float>(value, -1, 1, meterBounds.getX(), meterBounds.getRight());
+    };
+
+    fillMeter(g, meterBounds.withHeight(3), remap(peakAverager.getAvg()), centerX);
+    fillMeter(g, meterBounds.withHeight(20).translated(0, 5), remap(slowAverager.getAvg()), centerX);
+}
+
+void CorrelationMeter::fillMeter(juce::Graphics & g, juce::Rectangle<float>& bounds, float edgeX1, float edgeX2)
+{
+    if (edgeX1 < edgeX2) { std::swap(edgeX1, edgeX2); }
+    bounds = bounds.withX(edgeX2).withRight(edgeX1);
+    g.setColour(juce::Colours::white.withAlpha(0.15f));
+    g.fillRect(bounds);
+    g.setColour(juce::Colours::white);
+    g.drawRect(bounds);
+}
+
+void CorrelationMeter::update()
+{
+    auto bufferData = buffer.getArrayOfReadPointers();
+    for (int i = 0; i < buffer.getNumSamples(); ++i)
+    {
+        // Pearson fitting criterion
+        float sqrt = std::sqrt(filters[1].processSample(bufferData[0][i] * bufferData[0][i]) *
+            filters[2].processSample(bufferData[1][i] * bufferData[1][i]));
+
+        if (std::isnan(sqrt) || std::isinf(sqrt) || sqrt == 0)
+        {
+            slowAverager.add(0);
+            peakAverager.add(0);
+        }
+        else
+        {
+            float processedSample = filters[0].processSample(bufferData[0][i] * bufferData[1][i]) / sqrt;
+
+            slowAverager.add(processedSample);
+            peakAverager.add(processedSample);
+        }
+    }
+    repaint();
+}
+//==============================================================================
+StereoImageMeter::StereoImageMeter(juce::AudioBuffer<float>& buffer_, double sampleRate) :
+goniometer(buffer_),
+correlationMeter(buffer_, sampleRate)
+{
+    addAndMakeVisible(goniometer);
+    addAndMakeVisible(correlationMeter);
+}
+
+void StereoImageMeter::update()
+{
+    correlationMeter.update();
+    goniometer.repaint();
+}
+
+void StereoImageMeter::resized()
+{
+    auto bounds = getLocalBounds();
+
+    goniometer.setBounds(bounds.removeFromTop(300).withTrimmedLeft((getWidth() - getHeight()) / 2).withTrimmedRight((getWidth() - getHeight()) / 2));
+    correlationMeter.setBounds(goniometer.getBounds().withY(goniometer.getBottom() - 10).withHeight(25));
 }
 //==============================================================================
 PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMCPP_Project10AudioProcessor& p)
@@ -547,10 +590,10 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     addAndMakeVisible(rmsHistogram);
     addAndMakeVisible(peakHistogram);
 
-    addAndMakeVisible(goniometer);
+    addAndMakeVisible(stereoImageMeter);
 
     startTimerHz(ValueHolderBase::frameRate);
-    setSize (700, 572);
+    setSize (700, 570);
 }
 
 PFMCPP_Project10AudioProcessorEditor::~PFMCPP_Project10AudioProcessorEditor()
@@ -591,7 +634,7 @@ void PFMCPP_Project10AudioProcessorEditor::timerCallback()
         rmsHistogram.update((rmsDbLeft + rmsDbRight) / 2);
         peakHistogram.update((magDbLeft + magDbRight) / 2);
 
-        goniometer.repaint();
+        stereoImageMeter.update();
     }
 }
 
@@ -605,7 +648,5 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     rmsStereoMeter.setBounds(bounds.removeFromLeft(85));
     peakStereoMeter.setBounds(bounds.removeFromRight(85));
 
-    goniometer.setBounds(bounds.removeFromTop(300)
-                               .withTrimmedLeft((getWidth() - getHeight()) / 2)
-                               .withTrimmedRight((getWidth() - getHeight()) / 2));
+    stereoImageMeter.setBounds(bounds);
 }
