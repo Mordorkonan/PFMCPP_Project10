@@ -46,6 +46,8 @@ void ValueHolderBase::setHoldTime(int ms) { holdTime = ms; }
 
 void ValueHolderBase::setThreshold(float th) { threshold = th; }
 
+float ValueHolderBase::getThreshold() const { return threshold; }
+
 juce::int64 ValueHolderBase::getNow() { return juce::Time::currentTimeMillis(); }
 
 juce::int64 ValueHolderBase::getPeakTime() const { return peakTime; }
@@ -186,7 +188,13 @@ void Meter::paint(juce::Graphics& g)
     };
 
     g.setColour(juce::Colours::white);
-    g.fillRect(bounds.withY(remap(peakDb)).withBottom(bounds.getBottom()));
+    // jmax because higher threshold value -> lesser Y value
+    g.fillRect(bounds.withY(juce::jmax(remap(peakDb), remap(decayingValueHolder.getThreshold()))).withBottom(bounds.getBottom()));
+    if (decayingValueHolder.getIsOverThreshold())
+    {
+        g.setColour(juce::Colours::orange);
+        g.fillRect(bounds.withY(remap(peakDb)).withBottom(remap(decayingValueHolder.getThreshold())));
+    }
 
     g.setColour(decayingValueHolder.getIsOverThreshold() ? juce::Colours::red : juce::Colours::lime);
     g.fillRect(bounds.withY(remap(decayingValueHolder.getCurrentValue())).withHeight(2));
@@ -656,9 +664,6 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
     // (Our component is opaque, so we must completely fill the background with a solid colour)
 
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
-
-    g.setColour(juce::Colours::red);
-    g.drawRect(s.getBounds());
 
     //reference = juce::ImageCache::getFromMemory(BinaryData::Reference_png, BinaryData::Reference_pngSize);
     //g.drawImage(reference, getLocalBounds().toFloat(), juce::RectanglePlacement::stretchToFit);

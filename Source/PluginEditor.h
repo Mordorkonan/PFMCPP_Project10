@@ -37,6 +37,7 @@ struct ValueHolderBase : juce::Timer
     void setHoldTime(int ms);
     float getCurrentValue() const;
     bool getIsOverThreshold() const;
+    float getThreshold() const;
 
     juce::int64 getPeakTime() const;
     juce::int64 getHoldTime() const;
@@ -57,7 +58,6 @@ struct ValueHolder : ValueHolderBase
     ~ValueHolder();
     void timerCallbackImpl() override;
     void updateHeldValue(float v) override;
-
     float getHeldValue() const;
 
 private:
