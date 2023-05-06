@@ -190,7 +190,7 @@ void PFMCPP_Project10AudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         panner.process(gainProcessContext);
     #endif
     audioBufferFifo.push(buffer);
-    //buffer.clear();
+    buffer.clear();
 
     // In case we have more outputs than inputs, this code clears any output
     // channels that didn't contain input data, (because these aren't

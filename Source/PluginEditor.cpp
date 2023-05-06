@@ -9,6 +9,17 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 //==============================================================================
+void NewLNF::drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
+                              float sliderPos, float minSliderPos, float maxSliderPos,
+                              const juce::Slider::SliderStyle style, juce::Slider& slider)
+{
+    auto bounds = juce::Rectangle<int>{ x, y, width, height };
+
+    //slider.setRange(height, y);
+    g.setColour(juce::Colours::red);
+    g.drawRect(bounds.withHeight(2).withY(sliderPos - 1).toFloat());
+}
+//==============================================================================
 ValueHolderBase::ValueHolderBase()
 {
     startTimerHz(frameRate);
@@ -112,6 +123,8 @@ TextMeter::TextMeter() : cachedValueDb(NEGATIVE_INFINITY)
     valueHolder.updateHeldValue(NEGATIVE_INFINITY);
 }
 
+void TextMeter::setThreshold(float threshold) { valueHolder.setThreshold(threshold); }
+
 void TextMeter::update(float valueDb)
 {
     cachedValueDb = valueDb;
@@ -152,6 +165,8 @@ void TextMeter::paint(juce::Graphics& g)
         1);
 }
 //==============================================================================
+void Meter::setThreshold(float threshold) { decayingValueHolder.setThreshold(threshold); }
+
 void Meter::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds();
@@ -246,6 +261,13 @@ MacroMeter::~MacroMeter() { averager.clear(NEGATIVE_INFINITY); }
 
 bool MacroMeter::getOrientation() const { return orientation; }
 
+void MacroMeter::setThreshold(float threshold)
+{
+    textMeter.setThreshold(threshold);
+    peakMeter.setThreshold(threshold);
+    avgMeter.setThreshold(threshold);
+}
+
 void MacroMeter::update(float level)
 {
     averager.add(level);
@@ -274,6 +296,8 @@ void MacroMeter::resized()
 }
 
 juce::Rectangle<int> MacroMeter::getAvgMeterBounds() const { return avgMeter.getLocalBounds(); }
+
+int MacroMeter::getTextMeterHeight() const { return textMeter.getHeight(); }
 //==============================================================================
 StereoMeter::StereoMeter(juce::String labelName, juce::String labelText) : label(labelName, labelText)
 {
@@ -282,10 +306,23 @@ StereoMeter::StereoMeter(juce::String labelName, juce::String labelText) : label
     addAndMakeVisible(dbScale);
     addAndMakeVisible(label);
 
+    addAndMakeVisible(thresholdSlider);
+    thresholdSlider.setLookAndFeel(&newLNF);
+    thresholdSlider.setRange(NEGATIVE_INFINITY, MAX_DECIBELS);
+
     label.setColour(juce::Label::backgroundColourId, juce::Colours::black);
     label.setColour(juce::Label::outlineColourId, juce::Colours::darkgrey);
     label.setColour(juce::Label::textColourId, juce::Colours::darkgrey);
     label.setFont(18);
+}
+
+// empty ref in threshold slider cause newLNF is deleted earlier
+StereoMeter::~StereoMeter() { thresholdSlider.setLookAndFeel(nullptr); }
+
+void StereoMeter::setThreshold(float threshold)
+{
+    leftMacroMeter.setThreshold(threshold);
+    rightMacroMeter.setThreshold(threshold);
 }
 
 void StereoMeter::update(float levelLeft, float levelRight)
@@ -305,6 +342,8 @@ void StereoMeter::resized()
     rightMacroMeter.setBounds(bounds.removeFromRight(25));
     dbScale.setBounds(bounds);
     dbScale.buildBackgroundImage(6, leftMacroMeter.getAvgMeterBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
+    //testSlider.setBounds(bounds.removeFromBottom(leftMacroMeter.getTextMeterHeight()));
+    thresholdSlider.setBounds(bounds);
 }
 //==============================================================================
 Histogram::Histogram(const juce::String& title_) : title(title_) { }
@@ -592,6 +631,18 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
 
     addAndMakeVisible(stereoImageMeter);
 
+    rmsStereoMeter.thresholdSlider.onValueChange = [this]()
+    {
+        auto newThreshold = rmsStereoMeter.thresholdSlider.getValue();
+        rmsStereoMeter.setThreshold(newThreshold);
+    };
+
+    peakStereoMeter.thresholdSlider.onValueChange = [this]()
+    {
+        auto newThreshold = peakStereoMeter.thresholdSlider.getValue();
+        peakStereoMeter.setThreshold(newThreshold);
+    };
+
     startTimerHz(ValueHolderBase::frameRate);
     setSize (700, 570);
 }
@@ -605,6 +656,9 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
     // (Our component is opaque, so we must completely fill the background with a solid colour)
 
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
+
+    g.setColour(juce::Colours::red);
+    g.drawRect(s.getBounds());
 
     //reference = juce::ImageCache::getFromMemory(BinaryData::Reference_png, BinaryData::Reference_pngSize);
     //g.drawImage(reference, getLocalBounds().toFloat(), juce::RectanglePlacement::stretchToFit);
