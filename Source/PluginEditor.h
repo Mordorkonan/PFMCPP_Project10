@@ -23,8 +23,6 @@ struct NewLNF : juce::LookAndFeel_V4
     void drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
                           float sliderPos, float minSliderPos, float maxSliderPos,
                           const juce::Slider::SliderStyle style, juce::Slider& slider) override;
-
-    int getSliderThumbRadius(juce::Slider& slider) override;
 };
 //==============================================================================
 struct ValueHolderBase : juce::Timer
@@ -156,7 +154,6 @@ private:
     MacroMeter leftMacroMeter{ Left }, rightMacroMeter{ Right };
     DbScale dbScale;
     juce::Label label;
-    NewLNF newLNF;
 };
 //==============================================================================
 struct Histogram : juce::Component
@@ -247,6 +244,7 @@ private:
     PFMCPP_Project10AudioProcessor& audioProcessor;
     juce::AudioBuffer<float> buffer;
     juce::Image reference;
+    NewLNF newLNF;
     StereoMeter rmsStereoMeter{ "RMS", "L RMS R" },
                 peakStereoMeter{ "PEAK", "L PEAK R" };
 

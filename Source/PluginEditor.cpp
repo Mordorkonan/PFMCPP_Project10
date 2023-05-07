@@ -349,7 +349,7 @@ void StereoMeter::resized()
     rightMacroMeter.setBounds(bounds.removeFromRight(25));
     dbScale.setBounds(bounds);
     dbScale.buildBackgroundImage(6, leftMacroMeter.getAvgMeterBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
-    thresholdSlider.setBounds(bounds.removeFromBottom(bounds.getHeight() - leftMacroMeter.getTextMeterHeight()));
+    thresholdSlider.setBounds(bounds.removeFromBottom(bounds.getHeight() - leftMacroMeter.getTextMeterHeight()).expanded(0, 12));
 }
 //==============================================================================
 Histogram::Histogram(const juce::String& title_) : title(title_) { }
@@ -388,22 +388,19 @@ void Histogram::displayPath(juce::Graphics& g, juce::Rectangle<float> bounds)
     if (!fill.isEmpty())
     {
         juce::ColourGradient gradient;
+        float remappedThreshold = juce::jmap(threshold, NEGATIVE_INFINITY, MAX_DECIBELS, 0.01f, 1.0f);
 
-        gradient.addColour(0.0, juce::Colours::black.withAlpha(0.15f));
-        gradient.addColour(1.0, juce::Colours::white.withAlpha(0.45f));
+        gradient.addColour(0.0, juce::Colours::white.withAlpha(0.15f));
+        gradient.addColour(remappedThreshold - 0.01, juce::Colours::white.withAlpha(0.15f));
+        gradient.addColour(remappedThreshold, juce::Colours::red.withAlpha(0.45f));
+        gradient.addColour(1.0f, juce::Colours::red.withAlpha(0.45f));
         
         gradient.point1 = bounds.getBottomLeft();
         gradient.point2 = bounds.getTopLeft();
-        auto th = static_cast<int>(juce::jmap(threshold, NEGATIVE_INFINITY, MAX_DECIBELS, static_cast<float>(getHeight()), 0.0f));
+
         g.setGradientFill(gradient);
         g.fillPath(fill);
         g.setColour(juce::Colours::white);
-        g.strokePath(path, juce::PathStrokeType(1));
-
-        g.setColour(juce::Colours::red.withAlpha(0.35f));
-        g.reduceClipRegion(getLocalBounds().withHeight(th));
-        g.fillPath(fill);
-        g.setColour(juce::Colours::red);
         g.strokePath(path, juce::PathStrokeType(1));
     }
 }
