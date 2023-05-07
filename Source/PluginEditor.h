@@ -165,6 +165,9 @@ struct Histogram : juce::Component
     void resized() override;
     void mouseDown(const juce::MouseEvent& e) override;
     void update(float value);
+    void setThreshold(float newThreshold);
+    bool isOverThreshold() const;
+
 private:
     ReadAllAfterWriteCircularBuffer<float> buffer{ NEGATIVE_INFINITY };
     juce::Path path;
@@ -175,6 +178,7 @@ private:
                                 ReadAllAfterWriteCircularBuffer<float>& buffer,
                                 juce::Rectangle<float> bounds);
     const juce::String title;
+    float threshold{ 0.0f };
 };
 //==============================================================================
 struct Goniometer : juce::Component

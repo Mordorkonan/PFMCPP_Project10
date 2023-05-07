@@ -356,6 +356,8 @@ void StereoMeter::resized()
 //==============================================================================
 Histogram::Histogram(const juce::String& title_) : title(title_) { }
 
+void Histogram::setThreshold(float newThreshold) { threshold = newThreshold; }
+
 void Histogram::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds().reduced(5);
@@ -387,11 +389,24 @@ void Histogram::displayPath(juce::Graphics& g, juce::Rectangle<float> bounds)
     juce::Path fill = buildPath(path, buffer, bounds);
     if (!fill.isEmpty())
     {
-        g.setColour(juce::Colours::white.withAlpha(0.15f));
+        juce::ColourGradient gradient;
+
+        gradient.addColour(0.0, juce::Colours::black.withAlpha(0.15f));
+        gradient.addColour(1.0, juce::Colours::white.withAlpha(0.45f));
+        
+        gradient.point1 = bounds.getBottomLeft();
+        gradient.point2 = bounds.getTopLeft();
+        auto th = static_cast<int>(juce::jmap(threshold, NEGATIVE_INFINITY, MAX_DECIBELS, static_cast<float>(getHeight()), 0.0f));
+        g.setGradientFill(gradient);
         g.fillPath(fill);
         g.setColour(juce::Colours::white);
-        g.strokePath(path,
-                     juce::PathStrokeType(1));
+        g.strokePath(path, juce::PathStrokeType(1));
+
+        g.setColour(juce::Colours::red.withAlpha(0.35f));
+        g.reduceClipRegion(getLocalBounds().withHeight(th));
+        g.fillPath(fill);
+        g.setColour(juce::Colours::red);
+        g.strokePath(path, juce::PathStrokeType(1));
     }
 }
 
@@ -643,12 +658,14 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     {
         auto newThreshold = rmsStereoMeter.thresholdSlider.getValue();
         rmsStereoMeter.setThreshold(newThreshold);
+        rmsHistogram.setThreshold(newThreshold);
     };
 
     peakStereoMeter.thresholdSlider.onValueChange = [this]()
     {
         auto newThreshold = peakStereoMeter.thresholdSlider.getValue();
         peakStereoMeter.setThreshold(newThreshold);
+        peakHistogram.setThreshold(newThreshold);
     };
 
     startTimerHz(ValueHolderBase::frameRate);
