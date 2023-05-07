@@ -20,9 +20,11 @@ enum Orientation { Left, Right };
 //==============================================================================
 struct NewLNF : juce::LookAndFeel_V4
 {
-    void drawLinearSlider(juce::Graphics&, int x, int y, int width, int height,
+    void drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
                           float sliderPos, float minSliderPos, float maxSliderPos,
-                          const juce::Slider::SliderStyle, juce::Slider&) override;
+                          const juce::Slider::SliderStyle style, juce::Slider& slider) override;
+
+    int getSliderThumbRadius(juce::Slider& slider) override;
 };
 //==============================================================================
 struct ValueHolderBase : juce::Timer

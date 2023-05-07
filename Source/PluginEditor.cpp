@@ -13,12 +13,11 @@ void NewLNF::drawLinearSlider(juce::Graphics& g, int x, int y, int width, int he
                               float sliderPos, float minSliderPos, float maxSliderPos,
                               const juce::Slider::SliderStyle style, juce::Slider& slider)
 {
-    auto bounds = juce::Rectangle<int>{ x, y, width, height };
-
-    //slider.setRange(height, y);
     g.setColour(juce::Colours::red);
-    g.drawRect(bounds.withHeight(2).withY(sliderPos - 1).toFloat());
+    g.drawRect(juce::Rectangle<float>{ static_cast<float>(x), sliderPos - 1.0f, static_cast<float>(width), 2.0f });
 }
+
+int NewLNF::getSliderThumbRadius(juce::Slider& slider) { return 1; }
 //==============================================================================
 ValueHolderBase::ValueHolderBase()
 {
@@ -350,8 +349,7 @@ void StereoMeter::resized()
     rightMacroMeter.setBounds(bounds.removeFromRight(25));
     dbScale.setBounds(bounds);
     dbScale.buildBackgroundImage(6, leftMacroMeter.getAvgMeterBounds(), NEGATIVE_INFINITY, MAX_DECIBELS);
-    //testSlider.setBounds(bounds.removeFromBottom(leftMacroMeter.getTextMeterHeight()));
-    thresholdSlider.setBounds(bounds);
+    thresholdSlider.setBounds(bounds.removeFromBottom(bounds.getHeight() - leftMacroMeter.getTextMeterHeight()));
 }
 //==============================================================================
 Histogram::Histogram(const juce::String& title_) : title(title_) { }
