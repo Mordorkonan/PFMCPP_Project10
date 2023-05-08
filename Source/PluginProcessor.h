@@ -10,7 +10,7 @@
 
 #include <JuceHeader.h>
 
-//#define OSC_GAIN true
+#define OSC_GAIN false
 //==============================================================================
 /**
 */

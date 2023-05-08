@@ -88,6 +88,7 @@ struct TextMeter : juce::Component
     ///expects a decibel value
     void update(float valueDb);
     void setThreshold(float threshold);
+
 private:
     float cachedValueDb;
     ValueHolder valueHolder;
@@ -98,8 +99,10 @@ struct Meter : juce::Component
     void paint(juce::Graphics& g) override;
     void update(float dbLevel);
     void setThreshold(float threshold);
+    void toggleTicks(bool toggleState);
 
 private:
+    bool showTicks{ true };
     float peakDb;
     DecayingValueHolder decayingValueHolder;
 };
@@ -131,6 +134,8 @@ struct MacroMeter : juce::Component
     juce::Rectangle<int> getAvgMeterBounds() const;
     int getTextMeterHeight() const;
     void setThreshold(float threshold);
+    void showMeters(const juce::String& meter);
+    void toggleTicks(bool toggleState);
 
 private:
     int orientation;
@@ -146,6 +151,8 @@ struct StereoMeter : juce::Component
     void update(float levelLeft, float levelRight);
     void resized() override;
     void setThreshold(float threshold);
+    void showMeters(const juce::String& meter);
+    void toggleTicks(bool toggleState);
 
     juce::Slider thresholdSlider{ juce::Slider::SliderStyle::LinearVertical,
                                   juce::Slider::TextEntryBoxPosition::NoTextBox };
@@ -252,6 +259,9 @@ private:
 
     StereoImageMeter stereoImageMeter{ buffer, audioProcessor.getSampleRate() };
 
+    juce::ComboBox meterView{ "Meter View" };
+
+    juce::ToggleButton enableHold{ "Enable Hold" };
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)
 };
-
