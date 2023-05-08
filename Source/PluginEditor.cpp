@@ -39,7 +39,7 @@ float ValueHolderBase::getCurrentValue() const { return currentValue; }
 
 bool ValueHolderBase::getIsOverThreshold() const { return currentValue > threshold; }
 
-void ValueHolderBase::setHoldTime(int ms) { holdTime = ms; }
+void ValueHolderBase::setHoldTime(int& ms) { holdTime = ms; }
 
 void ValueHolderBase::setThreshold(float th) { threshold = th; }
 
@@ -63,10 +63,17 @@ void ValueHolder::updateHeldValue(float v)
 
     if (getIsOverThreshold())
     {
-        peakTime = getNow();
-        if (v > heldValue)
+        if (holdTime == 0)
         {
             heldValue = v;
+        }
+        else
+        {
+            peakTime = getNow();
+            if (v > heldValue)
+            {
+                heldValue = v;
+            }
         }
     }    
 }
@@ -81,7 +88,7 @@ void ValueHolder::timerCallbackImpl()
 
 float ValueHolder::getHeldValue() const { return heldValue; }
 //==============================================================================
-DecayingValueHolder::DecayingValueHolder() : decayRateMultiplier(3)
+DecayingValueHolder::DecayingValueHolder() : decayRateMultiplier(1/*3*/)
 {
     setDecayRate(3);
 }
@@ -104,7 +111,7 @@ void DecayingValueHolder::timerCallbackImpl()
         MAX_DECIBELS,
         currentValue - decayRatePerFrame * decayRateMultiplier);
 
-    decayRateMultiplier++;
+    //decayRateMultiplier++;
 
     if (currentValue <= NEGATIVE_INFINITY)
     {
@@ -124,6 +131,10 @@ TextMeter::TextMeter() : cachedValueDb(NEGATIVE_INFINITY)
 
 void TextMeter::setThreshold(float threshold) { valueHolder.setThreshold(threshold); }
 
+void TextMeter::setHoldDuration(int& newDuration) { valueHolder.setHoldTime(newDuration); }
+
+void TextMeter::resetHeldValue() { valueHolder.updateHeldValue(NEGATIVE_INFINITY); }
+
 void TextMeter::update(float valueDb)
 {
     cachedValueDb = valueDb;
@@ -138,6 +149,8 @@ void TextMeter::paint(juce::Graphics& g)
     //valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
     auto now = ValueHolder::getNow();
 
+
+    // +++ FIX THIS CONDITION +++
     if (valueHolder.getIsOverThreshold() ||
         (now - valueHolder.getPeakTime() < valueHolder.getHoldTime()) &&
         valueHolder.getPeakTime() > valueHolder.getHoldTime())     // for plugin launch
@@ -167,6 +180,8 @@ void TextMeter::paint(juce::Graphics& g)
 void Meter::setThreshold(float threshold) { decayingValueHolder.setThreshold(threshold); }
 
 void Meter::toggleTicks(bool toggleState) { showTicks = toggleState; }
+
+void Meter::setDecayRate(float& dbPerSec) { decayingValueHolder.setDecayRate(dbPerSec); }
 
 void Meter::paint(juce::Graphics& g)
 {
@@ -304,6 +319,16 @@ void MacroMeter::setThreshold(float threshold)
     avgMeter.setThreshold(threshold);
 }
 
+void MacroMeter::setHoldDuration(int& newDuration) { textMeter.setHoldDuration(newDuration); }
+
+void MacroMeter::resetHeldValue() { textMeter.resetHeldValue(); }
+
+void MacroMeter::setDecayRate(float& dbPerSec)
+{
+    avgMeter.setDecayRate(dbPerSec);
+    peakMeter.setDecayRate(dbPerSec);
+}
+
 void MacroMeter::update(float level)
 {
     averager.add(level);
@@ -370,6 +395,24 @@ void StereoMeter::setThreshold(float threshold)
 {
     leftMacroMeter.setThreshold(threshold);
     rightMacroMeter.setThreshold(threshold);
+}
+
+void StereoMeter::setHoldDuration(int& newDuration)
+{
+    leftMacroMeter.setHoldDuration(newDuration);
+    rightMacroMeter.setHoldDuration(newDuration);
+}
+
+void StereoMeter::resetHeldValue()
+{
+    leftMacroMeter.resetHeldValue();
+    rightMacroMeter.resetHeldValue();
+}
+
+void StereoMeter::setDecayRate(float& dbPerSec)
+{
+    leftMacroMeter.setDecayRate(dbPerSec);
+    rightMacroMeter.setDecayRate(dbPerSec);
 }
 
 void StereoMeter::update(float levelLeft, float levelRight)
@@ -690,7 +733,10 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     addAndMakeVisible(stereoImageMeter);
 
     addAndMakeVisible(meterView);
+    addAndMakeVisible(holdDuration);
+    addAndMakeVisible(decayRate);
 
+    addAndMakeVisible(resetHold);
     addAndMakeVisible(enableHold);
 
     rmsStereoMeter.thresholdSlider.setLookAndFeel(&newLNF);
@@ -717,6 +763,37 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     {
         rmsStereoMeter.showMeters(meterView.getText());
         peakStereoMeter.showMeters(meterView.getText());
+    };
+
+    holdDuration.setTextWhenNothingSelected(juce::String{ "Hold ms" });
+    juce::StringArray durationKeys{ "0.0s", "0.5s", "2.0s", "4.0s", "6.0s", "inf" };
+    holdDuration.addItemList(durationKeys, 1);
+    holdDuration.onChange = [this]()
+    {
+        juce::Array<int> durationMs{ 0, 500, 2000, 4000, 6000, std::numeric_limits<int>::max() };
+        int newDuration{ durationMs[holdDuration.getSelectedItemIndex()] };
+
+        if (newDuration == std::numeric_limits<int>::max()) { resetHold.setVisible(true); }
+        else { resetHold.setVisible(false); }
+        rmsStereoMeter.setHoldDuration(newDuration);
+        peakStereoMeter.setHoldDuration(newDuration);
+    };
+
+    decayRate.setTextWhenNothingSelected(juce::String{ "Hold ms" });
+    juce::StringArray decayKeys{ "-3.0dB/s", "-6.0dB/s", "-12.0dB/s", "-24.0dB/s", "-36.0dB/s" };
+    decayRate.addItemList(decayKeys, 1);
+    decayRate.onChange = [this]()
+    {
+        float dbPerSec = decayRate.getSelectedId() * 3;
+        rmsStereoMeter.setDecayRate(dbPerSec);
+        peakStereoMeter.setDecayRate(dbPerSec);
+    };
+
+    resetHold.setVisible(false);
+    resetHold.onClick = [this]()
+    {
+        rmsStereoMeter.resetHeldValue();
+        peakStereoMeter.resetHeldValue();
     };
 
     enableHold.setToggleState(true, juce::NotificationType::sendNotification);
@@ -785,5 +862,8 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     stereoImageMeter.setBounds(bounds);
 
     meterView.setBounds(100, 10, 120, 25);
-    enableHold.setBounds(meterView.getBounds().translated(0, 60));
+    holdDuration.setBounds(meterView.getBounds().translated(0, 30));
+    resetHold.setBounds(holdDuration.getBounds().translated(0, 30));
+    enableHold.setBounds(resetHold.getBounds().translated(0, 30));
+    decayRate.setBounds(enableHold.getBounds().translated(0, 30));
 }
