@@ -18,6 +18,13 @@
 */
 enum Orientation { Left, Right };
 //==============================================================================
+struct NewLNF : juce::LookAndFeel_V4
+{
+    void drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
+                          float sliderPos, float minSliderPos, float maxSliderPos,
+                          const juce::Slider::SliderStyle style, juce::Slider& slider) override;
+};
+//==============================================================================
 struct ValueHolderBase : juce::Timer
 {
     ValueHolderBase();
@@ -30,6 +37,7 @@ struct ValueHolderBase : juce::Timer
     void setHoldTime(int ms);
     float getCurrentValue() const;
     bool getIsOverThreshold() const;
+    float getThreshold() const;
 
     juce::int64 getPeakTime() const;
     juce::int64 getHoldTime() const;
@@ -50,7 +58,6 @@ struct ValueHolder : ValueHolderBase
     ~ValueHolder();
     void timerCallbackImpl() override;
     void updateHeldValue(float v) override;
-
     float getHeldValue() const;
 
 private:
@@ -80,6 +87,7 @@ struct TextMeter : juce::Component
     void paint(juce::Graphics& g) override;
     ///expects a decibel value
     void update(float valueDb);
+    void setThreshold(float threshold);
 private:
     float cachedValueDb;
     ValueHolder valueHolder;
@@ -89,6 +97,7 @@ struct Meter : juce::Component
 {
     void paint(juce::Graphics& g) override;
     void update(float dbLevel);
+    void setThreshold(float threshold);
 
 private:
     float peakDb;
@@ -120,6 +129,8 @@ struct MacroMeter : juce::Component
     void update(float level);
     bool getOrientation() const;
     juce::Rectangle<int> getAvgMeterBounds() const;
+    int getTextMeterHeight() const;
+    void setThreshold(float threshold);
 
 private:
     int orientation;
@@ -131,8 +142,13 @@ private:
 struct StereoMeter : juce::Component
 {
     StereoMeter(juce::String labelName, juce::String labelText);
+    ~StereoMeter();
     void update(float levelLeft, float levelRight);
     void resized() override;
+    void setThreshold(float threshold);
+
+    juce::Slider thresholdSlider{ juce::Slider::SliderStyle::LinearVertical,
+                                  juce::Slider::TextEntryBoxPosition::NoTextBox };
 
 private:
     MacroMeter leftMacroMeter{ Left }, rightMacroMeter{ Right };
@@ -148,6 +164,9 @@ struct Histogram : juce::Component
     void resized() override;
     void mouseDown(const juce::MouseEvent& e) override;
     void update(float value);
+    void setThreshold(float newThreshold);
+    bool isOverThreshold() const;
+
 private:
     ReadAllAfterWriteCircularBuffer<float> buffer{ NEGATIVE_INFINITY };
     juce::Path path;
@@ -158,6 +177,7 @@ private:
                                 ReadAllAfterWriteCircularBuffer<float>& buffer,
                                 juce::Rectangle<float> bounds);
     const juce::String title;
+    float threshold{ 0.0f };
 };
 //==============================================================================
 struct Goniometer : juce::Component
@@ -224,6 +244,7 @@ private:
     PFMCPP_Project10AudioProcessor& audioProcessor;
     juce::AudioBuffer<float> buffer;
     juce::Image reference;
+    NewLNF newLNF;
     StereoMeter rmsStereoMeter{ "RMS", "L RMS R" },
                 peakStereoMeter{ "PEAK", "L PEAK R" };
 
