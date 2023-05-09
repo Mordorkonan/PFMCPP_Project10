@@ -16,6 +16,16 @@ void NewLNF::drawLinearSlider(juce::Graphics& g, int x, int y, int width, int he
     g.setColour(juce::Colours::red);
     g.drawRect(juce::Rectangle<float>{ static_cast<float>(x), sliderPos - 1.0f, static_cast<float>(width), 2.0f });
 }
+
+//void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
+//                      float sliderPosProportional, float rotaryStartAngle,
+//                      float rotaryEndAngle, juce::Slider& slider)
+//{
+//    g.setColour(juce::Colours::red);
+//    g.drawRect(slider.getLocalBounds());
+//    g.setColour(juce::Colours::yellow);
+//    g.drawRect(x, y, width, height);
+//}
 //==============================================================================
 ValueHolderBase::ValueHolderBase()
 {
@@ -534,6 +544,8 @@ juce::Path Histogram::buildPath(juce::Path& p,
 //==============================================================================
 Goniometer::Goniometer(juce::AudioBuffer<float>& buffer) : buffer(buffer) { internalBuffer = juce::AudioBuffer<float>(2, 256); }
 
+void Goniometer::setScale(float& coefficient) { scaleCoefficient = coefficient; }
+
 void Goniometer::paint(juce::Graphics& g)
 {
     p.clear();
@@ -561,8 +573,8 @@ void Goniometer::paint(juce::Graphics& g)
     {
         auto left = internalBuffer.getSample(0, i);
         auto right = internalBuffer.getSample(1, i);
-        auto mid = (left + right) * conversionCoefficient;
-        auto side = (left - right) * conversionCoefficient;
+        auto mid = (left + right) * conversionCoefficient * scaleCoefficient;
+        auto side = (left - right) * conversionCoefficient * scaleCoefficient;
 
         juce::Point<float> node{ map(side, reducedBounds.getRight(), reducedBounds.getX()),
                                  map(mid, reducedBounds.getBottom(), reducedBounds.getY()) };
@@ -713,6 +725,11 @@ correlationMeter(buffer_, sampleRate)
     addAndMakeVisible(correlationMeter);
 }
 
+void StereoImageMeter::setGoniometerScale(float coefficient)
+{
+    goniometer.setScale(coefficient);
+}
+
 void StereoImageMeter::update()
 {
     correlationMeter.update();
@@ -747,6 +764,8 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
 
     addAndMakeVisible(resetHold);
     addAndMakeVisible(enableHold);
+
+    addAndMakeVisible(goniometerScale);
 
     rmsStereoMeter.thresholdSlider.setLookAndFeel(&newLNF);
     peakStereoMeter.thresholdSlider.setLookAndFeel(&newLNF);
@@ -824,6 +843,14 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
         peakStereoMeter.toggleTicks(enableHold.getToggleState());
     };
 
+    //goniometerScale.setLookAndFeel(&newLNF);
+    goniometerScale.setRange(0.5f, 2.0f);
+    goniometerScale.setValue(1.0f);
+    goniometerScale.onValueChange = [this]()
+    {
+        stereoImageMeter.setGoniometerScale(goniometerScale.getValue());
+    };
+
     startTimerHz(ValueHolderBase::frameRate);
     setSize (700, 570);
 }
@@ -888,4 +915,5 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     enableHold.setBounds(resetHold.getBounds().translated(0, 30));
     decayRate.setBounds(enableHold.getBounds().translated(0, 30));
     avgDuration.setBounds(decayRate.getBounds().translated(0, 30));
+    goniometerScale.setBounds(500, 10, 100, 100);
 }

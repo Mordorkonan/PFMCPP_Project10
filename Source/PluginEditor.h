@@ -23,6 +23,10 @@ struct NewLNF : juce::LookAndFeel_V4
     void drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
                           float sliderPos, float minSliderPos, float maxSliderPos,
                           const juce::Slider::SliderStyle style, juce::Slider& slider) override;
+
+    //void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
+    //                      float sliderPosProportional, float rotaryStartAngle,
+    //                      float rotaryEndAngle, juce::Slider& slider) override;
 };
 //==============================================================================
 struct ValueHolderBase : juce::Timer
@@ -203,6 +207,7 @@ struct Goniometer : juce::Component
     Goniometer(juce::AudioBuffer<float>& buffer);
     void paint(juce::Graphics& g) override;
     void resized() override;
+    void setScale(float& coefficient);
 
 private:
     juce::AudioBuffer<float>& buffer;
@@ -212,6 +217,7 @@ private:
     juce::Array<juce::String> chars { "+S", "L", "M", "R", "-S" };
     juce::Image bkgd;
     int radius{ 0 };
+    float scaleCoefficient{ 1.0f };
     float conversionCoefficient{ juce::Decibels::decibelsToGain(-3.0f) };
 
     void drawBackground();
@@ -238,6 +244,7 @@ struct StereoImageMeter : juce::Component
     StereoImageMeter(juce::AudioBuffer<float>& buffer_, double sampleRate);
     void resized() override;
     void update();
+    void setGoniometerScale(float coefficient);
 
 private:
     Goniometer goniometer;
@@ -277,6 +284,9 @@ private:
 
     juce::ToggleButton enableHold{ "Enable Hold" };
     juce::TextButton resetHold{ "Reset Hold" };
+
+    juce::Slider goniometerScale{ juce::Slider::SliderStyle::RotaryHorizontalVerticalDrag,
+                                  juce::Slider::TextEntryBoxPosition::TextBoxBelow };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)
 };
