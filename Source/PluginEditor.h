@@ -142,6 +142,7 @@ struct MacroMeter : juce::Component
     void setHoldDuration(int& newDuration);
     void resetHeldValue();
     void setDecayRate(float& dbPerSec);
+    void setAvgDuration(float& avgDuration);
 
 private:
     int orientation;
@@ -162,6 +163,7 @@ struct StereoMeter : juce::Component
     void setHoldDuration(int& newDuration);
     void resetHeldValue();
     void setDecayRate(float& dbPerSec);
+    void setAverageDuration(float& avgDuration);
 
     juce::Slider thresholdSlider{ juce::Slider::SliderStyle::LinearVertical,
                                   juce::Slider::TextEntryBoxPosition::NoTextBox };
@@ -271,6 +273,7 @@ private:
     juce::ComboBox meterView{ "Meter View" };
     juce::ComboBox holdDuration{ "Hold Duration" };
     juce::ComboBox decayRate{ "Decay Rate" };
+    juce::ComboBox avgDuration{ "Average Duration" };
 
     juce::ToggleButton enableHold{ "Enable Hold" };
     juce::TextButton resetHold{ "Reset Hold" };

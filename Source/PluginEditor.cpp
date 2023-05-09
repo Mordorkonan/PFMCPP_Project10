@@ -323,6 +323,8 @@ void MacroMeter::setHoldDuration(int& newDuration) { textMeter.setHoldDuration(n
 
 void MacroMeter::resetHeldValue() { textMeter.resetHeldValue(); }
 
+void MacroMeter::setAvgDuration(float& avgDuration) { averager.resize(avgDuration, NEGATIVE_INFINITY); }
+
 void MacroMeter::setDecayRate(float& dbPerSec)
 {
     avgMeter.setDecayRate(dbPerSec);
@@ -413,6 +415,12 @@ void StereoMeter::setDecayRate(float& dbPerSec)
 {
     leftMacroMeter.setDecayRate(dbPerSec);
     rightMacroMeter.setDecayRate(dbPerSec);
+}
+
+void StereoMeter::setAverageDuration(float& avgDuration)
+{
+    leftMacroMeter.setAvgDuration(avgDuration);
+    rightMacroMeter.setAvgDuration(avgDuration);
 }
 
 void StereoMeter::update(float levelLeft, float levelRight)
@@ -735,6 +743,7 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     addAndMakeVisible(meterView);
     addAndMakeVisible(holdDuration);
     addAndMakeVisible(decayRate);
+    addAndMakeVisible(avgDuration);
 
     addAndMakeVisible(resetHold);
     addAndMakeVisible(enableHold);
@@ -779,7 +788,7 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
         peakStereoMeter.setHoldDuration(newDuration);
     };
 
-    decayRate.setTextWhenNothingSelected(juce::String{ "Hold ms" });
+    decayRate.setTextWhenNothingSelected(juce::String{ "Decay Rate" });
     juce::StringArray decayKeys{ "-3.0dB/s", "-6.0dB/s", "-12.0dB/s", "-24.0dB/s", "-36.0dB/s" };
     decayRate.addItemList(decayKeys, 1);
     decayRate.onChange = [this]()
@@ -787,6 +796,18 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
         float dbPerSec = decayRate.getSelectedId() * 3;
         rmsStereoMeter.setDecayRate(dbPerSec);
         peakStereoMeter.setDecayRate(dbPerSec);
+    };
+
+    avgDuration.setTextWhenNothingSelected(juce::String{ "Avg ms" });
+    juce::StringArray avgDurationKeys{ "100ms", "250ms", "500ms", "1000ms", "2000ms" };
+    avgDuration.addItemList(avgDurationKeys, 1);
+    avgDuration.onChange = [this]()
+    {
+        juce::Array<float> avgDurations{ 0.10f, 0.25f, 0.50f, 1.0f, 2.0f };
+        float newDuration{ avgDurations[avgDuration.getSelectedItemIndex()] * ValueHolderBase::frameRate };
+        
+        rmsStereoMeter.setAverageDuration(newDuration);
+        peakStereoMeter.setAverageDuration(newDuration);
     };
 
     resetHold.setVisible(false);
@@ -866,4 +887,5 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     resetHold.setBounds(holdDuration.getBounds().translated(0, 30));
     enableHold.setBounds(resetHold.getBounds().translated(0, 30));
     decayRate.setBounds(enableHold.getBounds().translated(0, 30));
+    avgDuration.setBounds(decayRate.getBounds().translated(0, 30));
 }
