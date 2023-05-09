@@ -23,10 +23,6 @@ struct NewLNF : juce::LookAndFeel_V4
     void drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
                           float sliderPos, float minSliderPos, float maxSliderPos,
                           const juce::Slider::SliderStyle style, juce::Slider& slider) override;
-
-    //void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
-    //                      float sliderPosProportional, float rotaryStartAngle,
-    //                      float rotaryEndAngle, juce::Slider& slider) override;
 };
 //==============================================================================
 struct ValueHolderBase : juce::Timer
@@ -202,6 +198,14 @@ private:
     float threshold{ 0.0f };
 };
 //==============================================================================
+struct HistogramContainer : juce::Component
+{
+    HistogramContainer();
+    void resized() override;
+    Histogram rmsHistogram{ "RMS" }, peakHistogram{ "PEAK" };
+    juce::FlexBox layout;
+};
+//==============================================================================
 struct Goniometer : juce::Component
 {
     Goniometer(juce::AudioBuffer<float>& buffer);
@@ -273,7 +277,8 @@ private:
     StereoMeter rmsStereoMeter{ "RMS", "L RMS R" },
                 peakStereoMeter{ "PEAK", "L PEAK R" };
 
-    Histogram rmsHistogram{ "RMS" }, peakHistogram{ "PEAK" };
+    //Histogram rmsHistogram{ "RMS" }, peakHistogram{ "PEAK" };
+    HistogramContainer histogramContainer;
 
     StereoImageMeter stereoImageMeter{ buffer, audioProcessor.getSampleRate() };
 
@@ -281,6 +286,7 @@ private:
     juce::ComboBox holdDuration{ "Hold Duration" };
     juce::ComboBox decayRate{ "Decay Rate" };
     juce::ComboBox avgDuration{ "Average Duration" };
+    juce::ComboBox histogramView{ "Histogram View" };
 
     juce::ToggleButton enableHold{ "Enable Hold" };
     juce::TextButton resetHold{ "Reset Hold" };

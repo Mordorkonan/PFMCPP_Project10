@@ -16,16 +16,6 @@ void NewLNF::drawLinearSlider(juce::Graphics& g, int x, int y, int width, int he
     g.setColour(juce::Colours::red);
     g.drawRect(juce::Rectangle<float>{ static_cast<float>(x), sliderPos - 1.0f, static_cast<float>(width), 2.0f });
 }
-
-//void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
-//                      float sliderPosProportional, float rotaryStartAngle,
-//                      float rotaryEndAngle, juce::Slider& slider)
-//{
-//    g.setColour(juce::Colours::red);
-//    g.drawRect(slider.getLocalBounds());
-//    g.setColour(juce::Colours::yellow);
-//    g.drawRect(x, y, width, height);
-//}
 //==============================================================================
 ValueHolderBase::ValueHolderBase()
 {
@@ -542,6 +532,31 @@ juce::Path Histogram::buildPath(juce::Path& p,
     return fill;
 }
 //==============================================================================
+HistogramContainer::HistogramContainer()
+{
+    addAndMakeVisible(rmsHistogram);
+    addAndMakeVisible(peakHistogram);
+
+    layout.flexDirection = juce::FlexBox::Direction::column;
+    layout.flexWrap = juce::FlexBox::Wrap::noWrap;
+    layout.alignContent = juce::FlexBox::AlignContent::spaceAround;
+    layout.alignItems = juce::FlexBox::AlignItems::stretch;
+    layout.justifyContent = juce::FlexBox::JustifyContent::spaceAround;
+}
+
+void HistogramContainer::resized()
+{
+    auto bounds = getLocalBounds();
+
+    juce::Array<juce::FlexItem> items;
+
+    items.add(juce::FlexItem(bounds.getWidth() / 2, bounds.getHeight() / 2, rmsHistogram));
+    items.add(juce::FlexItem(bounds.getWidth() / 2, bounds.getHeight() / 2, peakHistogram));
+
+    layout.items = items;
+    layout.performLayout(bounds);
+}
+//==============================================================================
 Goniometer::Goniometer(juce::AudioBuffer<float>& buffer) : buffer(buffer) { internalBuffer = juce::AudioBuffer<float>(2, 256); }
 
 void Goniometer::setScale(float& coefficient) { scaleCoefficient = coefficient; }
@@ -752,8 +767,7 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     addAndMakeVisible(rmsStereoMeter);
     addAndMakeVisible(peakStereoMeter);
 
-    addAndMakeVisible(rmsHistogram);
-    addAndMakeVisible(peakHistogram);
+    addAndMakeVisible(histogramContainer);
 
     addAndMakeVisible(stereoImageMeter);
 
@@ -761,6 +775,7 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     addAndMakeVisible(holdDuration);
     addAndMakeVisible(decayRate);
     addAndMakeVisible(avgDuration);
+    addAndMakeVisible(histogramView);
 
     addAndMakeVisible(resetHold);
     addAndMakeVisible(enableHold);
@@ -774,14 +789,14 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     {
         auto newThreshold = rmsStereoMeter.thresholdSlider.getValue();
         rmsStereoMeter.setThreshold(newThreshold);
-        rmsHistogram.setThreshold(newThreshold);
+        histogramContainer.rmsHistogram.setThreshold(newThreshold);
     };
 
     peakStereoMeter.thresholdSlider.onValueChange = [this]()
     {
         auto newThreshold = peakStereoMeter.thresholdSlider.getValue();
         peakStereoMeter.setThreshold(newThreshold);
-        peakHistogram.setThreshold(newThreshold);
+        histogramContainer.peakHistogram.setThreshold(newThreshold);
     };
 
     meterView.setTextWhenNothingSelected(juce::String{ "Hide meters" });
@@ -829,6 +844,16 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
         peakStereoMeter.setAverageDuration(newDuration);
     };
 
+    histogramView.setTextWhenNothingSelected(juce::String{ "Histogram" });
+    juce::StringArray histogramKeys{ "Stacked", "Side-by-Side" };
+    histogramView.addItemList(histogramKeys, 1);
+    histogramView.onChange = [this]()
+    {
+        if (histogramView.getSelectedItemIndex() == 0) { histogramContainer.layout.flexDirection = juce::FlexBox::Direction::column; }
+        else { histogramContainer.layout.flexDirection = juce::FlexBox::Direction::row; }
+        histogramContainer.layout.performLayout(histogramContainer.getLocalBounds());
+    };
+
     resetHold.setVisible(false);
     resetHold.onClick = [this]()
     {
@@ -842,8 +867,6 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
         rmsStereoMeter.toggleTicks(enableHold.getToggleState());
         peakStereoMeter.toggleTicks(enableHold.getToggleState());
     };
-
-    //goniometerScale.setLookAndFeel(&newLNF);
     goniometerScale.setRange(0.5f, 2.0f);
     goniometerScale.setValue(1.0f);
     goniometerScale.onValueChange = [this]()
@@ -864,6 +887,9 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
     // (Our component is opaque, so we must completely fill the background with a solid colour)
 
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
+
+    g.setColour(juce::Colours::red);
+    g.drawRect(histogramContainer.getBounds());
 
     //reference = juce::ImageCache::getFromMemory(BinaryData::Reference_png, BinaryData::Reference_pngSize);
     //g.drawImage(reference, getLocalBounds().toFloat(), juce::RectanglePlacement::stretchToFit);
@@ -890,8 +916,8 @@ void PFMCPP_Project10AudioProcessorEditor::timerCallback()
         rmsStereoMeter.update(rmsDbLeft, rmsDbRight);
         peakStereoMeter.update(magDbLeft, magDbRight);
 
-        rmsHistogram.update((rmsDbLeft + rmsDbRight) / 2);
-        peakHistogram.update((magDbLeft + magDbRight) / 2);
+        histogramContainer.rmsHistogram.update((rmsDbLeft + rmsDbRight) / 2);
+        histogramContainer.peakHistogram.update((magDbLeft + magDbRight) / 2);
 
         stereoImageMeter.update();
     }
@@ -901,8 +927,7 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
 {
     auto bounds = getLocalBounds();
 
-    peakHistogram.setBounds(bounds.removeFromBottom(120));
-    rmsHistogram.setBounds(bounds.removeFromBottom(120));
+    histogramContainer.setBounds(bounds.removeFromBottom(240));
 
     rmsStereoMeter.setBounds(bounds.removeFromLeft(85));
     peakStereoMeter.setBounds(bounds.removeFromRight(85));
@@ -915,5 +940,6 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     enableHold.setBounds(resetHold.getBounds().translated(0, 30));
     decayRate.setBounds(enableHold.getBounds().translated(0, 30));
     avgDuration.setBounds(decayRate.getBounds().translated(0, 30));
+    histogramView.setBounds(avgDuration.getBounds().translated(0, 30));
     goniometerScale.setBounds(500, 10, 100, 100);
 }
