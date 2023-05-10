@@ -827,7 +827,8 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     decayRate.addItemList(decayKeys, 1);
     decayRate.onChange = [this]()
     {
-        float dbPerSec = decayRate.getSelectedId() * 3;
+        juce::Array<float> decayRates{ 3.0f, 6.0f, 12.0f, 24.0f, 36.0f };
+        float dbPerSec = decayRates[decayRate.getSelectedItemIndex()];
         rmsStereoMeter.setDecayRate(dbPerSec);
         peakStereoMeter.setDecayRate(dbPerSec);
     };
