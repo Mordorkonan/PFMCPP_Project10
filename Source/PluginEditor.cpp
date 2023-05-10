@@ -97,7 +97,7 @@ DecayingValueHolder::~DecayingValueHolder() = default;
 
 void DecayingValueHolder::updateHeldValue(float v)
 {
-    if (v > currentValue)
+    if (v > currentValue || v == NEGATIVE_INFINITY)
     {
         peakTime = getNow();
         currentValue = v;
@@ -132,8 +132,6 @@ TextMeter::TextMeter() : cachedValueDb(NEGATIVE_INFINITY)
 void TextMeter::setThreshold(float threshold) { valueHolder.setThreshold(threshold); }
 
 void TextMeter::setHoldDuration(int& newDuration) { valueHolder.setHoldTime(newDuration); }
-
-void TextMeter::resetHeldValue() { valueHolder.updateHeldValue(NEGATIVE_INFINITY); }
 
 void TextMeter::update(float valueDb)
 {
@@ -182,6 +180,8 @@ void Meter::setThreshold(float threshold) { decayingValueHolder.setThreshold(thr
 void Meter::toggleTicks(bool toggleState) { showTicks = toggleState; }
 
 void Meter::setDecayRate(float& dbPerSec) { decayingValueHolder.setDecayRate(dbPerSec); }
+
+void Meter::resetHeldValue() { decayingValueHolder.updateHeldValue(NEGATIVE_INFINITY); }
 
 void Meter::paint(juce::Graphics& g)
 {
@@ -321,9 +321,13 @@ void MacroMeter::setThreshold(float threshold)
 
 void MacroMeter::setHoldDuration(int& newDuration) { textMeter.setHoldDuration(newDuration); }
 
-void MacroMeter::resetHeldValue() { textMeter.resetHeldValue(); }
-
 void MacroMeter::setAvgDuration(float& avgDuration) { averager.resize(avgDuration, NEGATIVE_INFINITY); }
+
+void MacroMeter::resetHeldValue()
+{
+    avgMeter.resetHeldValue();
+    peakMeter.resetHeldValue();
+}
 
 void MacroMeter::setDecayRate(float& dbPerSec)
 {

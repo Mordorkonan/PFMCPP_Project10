@@ -89,7 +89,6 @@ struct TextMeter : juce::Component
     void update(float valueDb);
     void setThreshold(float threshold);
     void setHoldDuration(int& newDuration);
-    void resetHeldValue();
 
 private:
     float cachedValueDb;
@@ -103,6 +102,7 @@ struct Meter : juce::Component
     void setThreshold(float threshold);
     void toggleTicks(bool toggleState);
     void setDecayRate(float& dbPerSec);
+    void resetHeldValue();
 
 private:
     bool showTicks{ true };
