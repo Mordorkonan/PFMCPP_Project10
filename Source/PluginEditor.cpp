@@ -540,26 +540,27 @@ HistogramContainer::HistogramContainer()
 {
     addAndMakeVisible(rmsHistogram);
     addAndMakeVisible(peakHistogram);
+}
 
-    layout.flexDirection = juce::FlexBox::Direction::column;
+void HistogramContainer::setFlex(juce::FlexBox::Direction directionType, juce::Rectangle<int> bounds)
+{
+    juce::FlexBox layout;
+    juce::Array<juce::FlexItem> items;
+
+    layout.flexDirection = directionType;
     layout.flexWrap = juce::FlexBox::Wrap::noWrap;
     layout.alignContent = juce::FlexBox::AlignContent::spaceAround;
     layout.alignItems = juce::FlexBox::AlignItems::stretch;
     layout.justifyContent = juce::FlexBox::JustifyContent::spaceAround;
-}
 
-void HistogramContainer::resized()
-{
-    auto bounds = getLocalBounds();
-
-    juce::Array<juce::FlexItem> items;
-
-    items.add(juce::FlexItem(bounds.getWidth() / 2, bounds.getHeight() / 2, rmsHistogram));
-    items.add(juce::FlexItem(bounds.getWidth() / 2, bounds.getHeight() / 2, peakHistogram));
+    items.add(juce::FlexItem(rmsHistogram).withFlex(0.25f));
+    items.add(juce::FlexItem(peakHistogram).withFlex(0.25f));
 
     layout.items = items;
     layout.performLayout(bounds);
 }
+
+void HistogramContainer::resized() { setFlex(juce::FlexBox::Direction::column, getLocalBounds()); }
 //==============================================================================
 Goniometer::Goniometer(juce::AudioBuffer<float>& buffer) : buffer(buffer) { internalBuffer = juce::AudioBuffer<float>(2, 256); }
 
@@ -854,9 +855,8 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     histogramView.addItemList(histogramKeys, 1);
     histogramView.onChange = [this]()
     {
-        if (histogramView.getSelectedItemIndex() == 0) { histogramContainer.layout.flexDirection = juce::FlexBox::Direction::column; }
-        else { histogramContainer.layout.flexDirection = juce::FlexBox::Direction::row; }
-        histogramContainer.layout.performLayout(histogramContainer.getLocalBounds());
+        if (histogramView.getSelectedItemIndex() == 0) { histogramContainer.setFlex(juce::FlexBox::Direction::column, histogramContainer.getLocalBounds()); }
+        else { histogramContainer.setFlex(juce::FlexBox::Direction::row, histogramContainer.getLocalBounds()); }
     };
 
     resetHold.setVisible(false);

@@ -202,8 +202,9 @@ struct HistogramContainer : juce::Component
 {
     HistogramContainer();
     void resized() override;
+    void setFlex(juce::FlexBox::Direction directionType, juce::Rectangle<int> bounds);
     Histogram rmsHistogram{ "RMS" }, peakHistogram{ "PEAK" };
-    juce::FlexBox layout;
+    //juce::FlexBox layout;
 };
 //==============================================================================
 struct Goniometer : juce::Component
