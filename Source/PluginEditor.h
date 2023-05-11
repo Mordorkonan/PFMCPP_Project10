@@ -34,7 +34,7 @@ struct ValueHolderBase : juce::Timer
     virtual void timerCallback() override;
     virtual void timerCallbackImpl() = 0;
     void setThreshold(float th);
-    void setHoldTime(int& ms);
+    void setHoldTime(int ms);
     float getCurrentValue() const;
     bool getIsOverThreshold() const;
     float getThreshold() const;
@@ -88,7 +88,7 @@ struct TextMeter : juce::Component
     ///expects a decibel value
     void update(float valueDb);
     void setThreshold(float threshold);
-    void setHoldDuration(int& newDuration);
+    void setHoldDuration(int newDuration);
 
 private:
     float cachedValueDb;
@@ -101,7 +101,7 @@ struct Meter : juce::Component
     void update(float dbLevel);
     void setThreshold(float threshold);
     void toggleTicks(bool toggleState);
-    void setDecayRate(float& dbPerSec);
+    void setDecayRate(float dbPerSec);
     void resetHeldValue();
 
 private:
@@ -139,10 +139,10 @@ struct MacroMeter : juce::Component
     void setThreshold(float threshold);
     void showMeters(const juce::String& meter);
     void toggleTicks(bool toggleState);
-    void setHoldDuration(int& newDuration);
+    void setHoldDuration(int newDuration);
     void resetHeldValue();
-    void setDecayRate(float& dbPerSec);
-    void setAvgDuration(float& avgDuration);
+    void setDecayRate(float dbPerSec);
+    void setAvgDuration(float avgDuration);
 
 private:
     int orientation;
@@ -160,10 +160,10 @@ struct StereoMeter : juce::Component
     void setThreshold(float threshold);
     void showMeters(const juce::String& meter);
     void toggleTicks(bool toggleState);
-    void setHoldDuration(int& newDuration);
+    void setHoldDuration(int newDuration);
     void resetHeldValue();
-    void setDecayRate(float& dbPerSec);
-    void setAverageDuration(float& avgDuration);
+    void setDecayRate(float dbPerSec);
+    void setAverageDuration(float avgDuration);
 
     juce::Slider thresholdSlider{ juce::Slider::SliderStyle::LinearVertical,
                                   juce::Slider::TextEntryBoxPosition::NoTextBox };

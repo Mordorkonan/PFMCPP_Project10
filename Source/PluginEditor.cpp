@@ -39,7 +39,7 @@ float ValueHolderBase::getCurrentValue() const { return currentValue; }
 
 bool ValueHolderBase::getIsOverThreshold() const { return currentValue > threshold; }
 
-void ValueHolderBase::setHoldTime(int& ms) { holdTime = ms; }
+void ValueHolderBase::setHoldTime(int ms) { holdTime = ms; }
 
 void ValueHolderBase::setThreshold(float th) { threshold = th; }
 
@@ -111,7 +111,7 @@ void DecayingValueHolder::timerCallbackImpl()
         MAX_DECIBELS,
         currentValue - decayRatePerFrame * decayRateMultiplier);
 
-    //decayRateMultiplier++;
+    decayRateMultiplier += 0.05f;
 
     if (currentValue <= NEGATIVE_INFINITY)
     {
@@ -131,7 +131,7 @@ TextMeter::TextMeter() : cachedValueDb(NEGATIVE_INFINITY)
 
 void TextMeter::setThreshold(float threshold) { valueHolder.setThreshold(threshold); }
 
-void TextMeter::setHoldDuration(int& newDuration) { valueHolder.setHoldTime(newDuration); }
+void TextMeter::setHoldDuration(int newDuration) { valueHolder.setHoldTime(newDuration); }
 
 void TextMeter::update(float valueDb)
 {
@@ -179,7 +179,7 @@ void Meter::setThreshold(float threshold) { decayingValueHolder.setThreshold(thr
 
 void Meter::toggleTicks(bool toggleState) { showTicks = toggleState; }
 
-void Meter::setDecayRate(float& dbPerSec) { decayingValueHolder.setDecayRate(dbPerSec); }
+void Meter::setDecayRate(float dbPerSec) { decayingValueHolder.setDecayRate(dbPerSec); }
 
 void Meter::resetHeldValue() { decayingValueHolder.updateHeldValue(NEGATIVE_INFINITY); }
 
@@ -319,9 +319,9 @@ void MacroMeter::setThreshold(float threshold)
     avgMeter.setThreshold(threshold);
 }
 
-void MacroMeter::setHoldDuration(int& newDuration) { textMeter.setHoldDuration(newDuration); }
+void MacroMeter::setHoldDuration(int newDuration) { textMeter.setHoldDuration(newDuration); }
 
-void MacroMeter::setAvgDuration(float& avgDuration) { averager.resize(avgDuration, NEGATIVE_INFINITY); }
+void MacroMeter::setAvgDuration(float avgDuration) { averager.resize(avgDuration, NEGATIVE_INFINITY); }
 
 void MacroMeter::resetHeldValue()
 {
@@ -329,7 +329,7 @@ void MacroMeter::resetHeldValue()
     peakMeter.resetHeldValue();
 }
 
-void MacroMeter::setDecayRate(float& dbPerSec)
+void MacroMeter::setDecayRate(float dbPerSec)
 {
     avgMeter.setDecayRate(dbPerSec);
     peakMeter.setDecayRate(dbPerSec);
@@ -403,7 +403,7 @@ void StereoMeter::setThreshold(float threshold)
     rightMacroMeter.setThreshold(threshold);
 }
 
-void StereoMeter::setHoldDuration(int& newDuration)
+void StereoMeter::setHoldDuration(int newDuration)
 {
     leftMacroMeter.setHoldDuration(newDuration);
     rightMacroMeter.setHoldDuration(newDuration);
@@ -415,13 +415,13 @@ void StereoMeter::resetHeldValue()
     rightMacroMeter.resetHeldValue();
 }
 
-void StereoMeter::setDecayRate(float& dbPerSec)
+void StereoMeter::setDecayRate(float dbPerSec)
 {
     leftMacroMeter.setDecayRate(dbPerSec);
     rightMacroMeter.setDecayRate(dbPerSec);
 }
 
-void StereoMeter::setAverageDuration(float& avgDuration)
+void StereoMeter::setAverageDuration(float avgDuration)
 {
     leftMacroMeter.setAvgDuration(avgDuration);
     rightMacroMeter.setAvgDuration(avgDuration);
