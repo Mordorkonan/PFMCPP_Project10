@@ -102,6 +102,7 @@ struct Meter : juce::Component
     void setThreshold(float threshold);
     void toggleTicks(bool toggleState);
     void setDecayRate(float dbPerSec);
+    void setHoldDuration(int newDuration);
     void resetHeldValue();
 
 private:

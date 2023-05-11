@@ -181,6 +181,8 @@ void Meter::toggleTicks(bool toggleState) { showTicks = toggleState; }
 
 void Meter::setDecayRate(float dbPerSec) { decayingValueHolder.setDecayRate(dbPerSec); }
 
+void Meter::setHoldDuration(int newDuration) { decayingValueHolder.setHoldTime(newDuration); }
+
 void Meter::resetHeldValue() { decayingValueHolder.updateHeldValue(NEGATIVE_INFINITY); }
 
 void Meter::paint(juce::Graphics& g)
@@ -319,7 +321,12 @@ void MacroMeter::setThreshold(float threshold)
     avgMeter.setThreshold(threshold);
 }
 
-void MacroMeter::setHoldDuration(int newDuration) { textMeter.setHoldDuration(newDuration); }
+void MacroMeter::setHoldDuration(int newDuration)
+{
+    avgMeter.setHoldDuration(newDuration);
+    peakMeter.setHoldDuration(newDuration);
+    textMeter.setHoldDuration(newDuration);
+}
 
 void MacroMeter::setAvgDuration(float avgDuration) { averager.resize(avgDuration, NEGATIVE_INFINITY); }
 
