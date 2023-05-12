@@ -811,18 +811,18 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
         histogramContainer.peakHistogram.setThreshold(newThreshold);
     };
 
-    meterView.setTextWhenNothingSelected(juce::String{ "Hide meters" });
     juce::StringArray meterLines{ "AVG", "PEAK", "BOTH" };
     meterView.addItemList(meterLines, 1);
+    meterView.setSelectedItemIndex(2);
     meterView.onChange = [this]()
     {
         rmsStereoMeter.showMeters(meterView.getText());
         peakStereoMeter.showMeters(meterView.getText());
     };
 
-    holdDuration.setTextWhenNothingSelected(juce::String{ "Hold ms" });
     juce::StringArray durationKeys{ "0.0s", "0.5s", "2.0s", "4.0s", "6.0s", "inf" };
     holdDuration.addItemList(durationKeys, 1);
+    holdDuration.setSelectedItemIndex(1);
     holdDuration.onChange = [this]()
     {
         juce::Array<int> durationMs{ 0, 500, 2000, 4000, 6000, std::numeric_limits<int>::max() };
@@ -834,9 +834,9 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
         peakStereoMeter.setHoldDuration(newDuration);
     };
 
-    decayRate.setTextWhenNothingSelected(juce::String{ "Decay Rate" });
     juce::StringArray decayKeys{ "-3.0dB/s", "-6.0dB/s", "-12.0dB/s", "-24.0dB/s", "-36.0dB/s" };
     decayRate.addItemList(decayKeys, 1);
+    decayRate.setSelectedItemIndex(1);
     decayRate.onChange = [this]()
     {
         juce::Array<float> decayRates{ 3.0f, 6.0f, 12.0f, 24.0f, 36.0f };
@@ -845,9 +845,9 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
         peakStereoMeter.setDecayRate(dbPerSec);
     };
 
-    avgDuration.setTextWhenNothingSelected(juce::String{ "Avg ms" });
     juce::StringArray avgDurationKeys{ "100ms", "250ms", "500ms", "1000ms", "2000ms" };
     avgDuration.addItemList(avgDurationKeys, 1);
+    avgDuration.setSelectedItemIndex(2);
     avgDuration.onChange = [this]()
     {
         juce::Array<float> avgDurations{ 0.10f, 0.25f, 0.50f, 1.0f, 2.0f };
@@ -857,9 +857,9 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
         peakStereoMeter.setAverageDuration(newDuration);
     };
 
-    histogramView.setTextWhenNothingSelected(juce::String{ "Histogram" });
     juce::StringArray histogramKeys{ "Stacked", "Side-by-Side" };
     histogramView.addItemList(histogramKeys, 1);
+    histogramView.setSelectedItemIndex(0);
     histogramView.onChange = [this]()
     {
         if (histogramView.getSelectedItemIndex() == 0) { histogramContainer.setFlex(juce::FlexBox::Direction::column, histogramContainer.getLocalBounds()); }
