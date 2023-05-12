@@ -60,6 +60,10 @@ ValueHolder::~ValueHolder() = default;
 void ValueHolder::updateHeldValue(float v)
 {
     currentValue = v;
+    if (holdTime == std::numeric_limits<int>::max())
+    {
+        if (heldValue < v) { heldValue = v; }
+    }
 
     if (getIsOverThreshold())
     {
@@ -148,11 +152,19 @@ void TextMeter::paint(juce::Graphics& g)
     auto now = ValueHolder::getNow();
 
 
+
     // +++ FIX THIS CONDITION +++
     if (valueHolder.getIsOverThreshold() ||
         (now - valueHolder.getPeakTime() < valueHolder.getHoldTime()) &&
         valueHolder.getPeakTime() > valueHolder.getHoldTime())     // for plugin launch
     {
+        if (valueHolder.getHoldTime() == std::numeric_limits<int>::max())
+        {
+            if (valueHolder.getHeldValue() < valueHolder.getCurrentValue())
+            {
+                valueHolder.updateHeldValue(valueHolder.getCurrentValue());
+            }
+        }
         g.setColour(juce::Colours::red);
         g.fillRect(bounds);
         textColor = juce::Colours::black;
