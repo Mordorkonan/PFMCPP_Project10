@@ -38,6 +38,7 @@ struct ValueHolderBase : juce::Timer
     float getCurrentValue() const;
     bool getIsOverThreshold() const;
     float getThreshold() const;
+    bool getInfiniteHold() const;
 
     juce::int64 getPeakTime() const;
     juce::int64 getHoldTime() const;
@@ -46,6 +47,7 @@ struct ValueHolderBase : juce::Timer
     static int frameRate;
 
 protected:
+    bool infiniteHold{ false };
     float threshold = 0.0f;
     float currentValue = NEGATIVE_INFINITY;
     juce::int64 peakTime = 0;   // 0 to prevent red textmeter at launch

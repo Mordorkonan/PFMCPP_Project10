@@ -35,11 +35,18 @@ void ValueHolderBase::timerCallback()
     }
 }
 
+void ValueHolderBase::setHoldTime(int ms)
+{
+    holdTime = ms;
+    if (ms == std::numeric_limits<int>::max()) { infiniteHold = true; }
+    else { infiniteHold = false; }
+}
+
 float ValueHolderBase::getCurrentValue() const { return currentValue; }
 
 bool ValueHolderBase::getIsOverThreshold() const { return currentValue > threshold; }
 
-void ValueHolderBase::setHoldTime(int ms) { holdTime = ms; }
+bool ValueHolderBase::getInfiniteHold() const { return infiniteHold; }
 
 void ValueHolderBase::setThreshold(float th) { threshold = th; }
 
@@ -60,10 +67,8 @@ ValueHolder::~ValueHolder() = default;
 void ValueHolder::updateHeldValue(float v)
 {
     currentValue = v;
-    if (holdTime == std::numeric_limits<int>::max())
-    {
-        if (heldValue < v) { heldValue = v; }
-    }
+
+    if (infiniteHold && heldValue < v) { heldValue = v; }
 
     if (getIsOverThreshold())
     {
@@ -84,7 +89,7 @@ void ValueHolder::updateHeldValue(float v)
 
 void ValueHolder::timerCallbackImpl()
 {
-    if (!getIsOverThreshold())
+    if (!getIsOverThreshold() && !infiniteHold)
     {
         heldValue = NEGATIVE_INFINITY;
     }
@@ -151,19 +156,14 @@ void TextMeter::paint(juce::Graphics& g)
     //valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
     auto now = ValueHolder::getNow();
 
-
-
     // +++ FIX THIS CONDITION +++
     if (valueHolder.getIsOverThreshold() ||
         (now - valueHolder.getPeakTime() < valueHolder.getHoldTime()) &&
         valueHolder.getPeakTime() > valueHolder.getHoldTime())     // for plugin launch
     {
-        if (valueHolder.getHoldTime() == std::numeric_limits<int>::max())
+        if (valueHolder.getInfiniteHold() && valueHolder.getHeldValue() < valueHolder.getCurrentValue())
         {
-            if (valueHolder.getHeldValue() < valueHolder.getCurrentValue())
-            {
-                valueHolder.updateHeldValue(valueHolder.getCurrentValue());
-            }
+            valueHolder.updateHeldValue(valueHolder.getCurrentValue());
         }
         g.setColour(juce::Colours::red);
         g.fillRect(bounds);
