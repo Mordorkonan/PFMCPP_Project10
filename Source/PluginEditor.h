@@ -61,6 +61,7 @@ struct ValueHolder : ValueHolderBase
     void timerCallbackImpl() override;
     void updateHeldValue(float v) override;
     float getHeldValue() const;
+    float getValue() const;
 
 private:
     float heldValue = NEGATIVE_INFINITY;

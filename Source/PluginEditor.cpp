@@ -29,7 +29,7 @@ ValueHolderBase::~ValueHolderBase()
 
 void ValueHolderBase::timerCallback()
 {
-    if (getNow() - peakTime > holdTime)
+    if (getNow() - peakTime > holdTime && !infiniteHold)
     {
         timerCallbackImpl();
     }
@@ -38,7 +38,7 @@ void ValueHolderBase::timerCallback()
 void ValueHolderBase::setHoldTime(int ms)
 {
     holdTime = ms;
-    if (ms == std::numeric_limits<int>::max()) { infiniteHold = true; }
+    if (holdTime == std::numeric_limits<int>::max()) { infiniteHold = true; }
     else { infiniteHold = false; }
 }
 
@@ -68,9 +68,7 @@ void ValueHolder::updateHeldValue(float v)
 {
     currentValue = v;
 
-    if (infiniteHold && heldValue < v) { heldValue = v; }
-
-    if (getIsOverThreshold())
+    if (getIsOverThreshold() || infiniteHold)
     {
         if (holdTime == 0)
         {
@@ -89,10 +87,18 @@ void ValueHolder::updateHeldValue(float v)
 
 void ValueHolder::timerCallbackImpl()
 {
-    if (!getIsOverThreshold() && !infiniteHold)
+    
+    if (!getIsOverThreshold())
     {
         heldValue = NEGATIVE_INFINITY;
     }
+}
+
+float ValueHolder::getValue() const
+{
+    bool check = getIsOverThreshold();
+    if (check || infiniteHold || getNow() - peakTime <= holdTime) { return heldValue; }
+    else { return currentValue; }
 }
 
 float ValueHolder::getHeldValue() const { return heldValue; }
@@ -152,30 +158,27 @@ void TextMeter::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds();
     juce::Colour textColor{ juce::Colours::white };
-    auto valueToDisplay = NEGATIVE_INFINITY;
-    //valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
+    //auto valueToDisplay = NEGATIVE_INFINITY;
     auto now = ValueHolder::getNow();
-
+    auto valueToDisplay = valueHolder.getValue();
     // +++ FIX THIS CONDITION +++
-    if (valueHolder.getIsOverThreshold() ||
-        (now - valueHolder.getPeakTime() < valueHolder.getHoldTime()) &&
-        valueHolder.getPeakTime() > valueHolder.getHoldTime())     // for plugin launch
+    //if (valueHolder.getIsOverThreshold() ||
+    //    (now - valueHolder.getPeakTime() < valueHolder.getHoldTime()) &&
+    //    valueHolder.getPeakTime() > valueHolder.getHoldTime())     // for plugin launch
+    if (valueHolder.getIsOverThreshold())
+
     {
-        if (valueHolder.getInfiniteHold() && valueHolder.getHeldValue() < valueHolder.getCurrentValue())
-        {
-            valueHolder.updateHeldValue(valueHolder.getCurrentValue());
-        }
         g.setColour(juce::Colours::red);
         g.fillRect(bounds);
         textColor = juce::Colours::black;
-        valueToDisplay = valueHolder.getHeldValue();
+        //valueToDisplay = valueHolder.getHeldValue();
     }
     else
     {
         g.setColour(juce::Colours::black);
         g.fillRect(bounds);
         textColor = juce::Colours::white;
-        valueToDisplay = valueHolder.getCurrentValue();
+        //valueToDisplay = valueHolder.getCurrentValue();
     }
 
     g.setColour(textColor);
