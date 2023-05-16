@@ -16,8 +16,6 @@ void NewLNF::drawLinearSlider(juce::Graphics& g, int x, int y, int width, int he
     g.setColour(juce::Colours::red);
     g.drawRect(juce::Rectangle<float>{ static_cast<float>(x), sliderPos - 1.0f, static_cast<float>(width), 2.0f });
 }
-
-int NewLNF::getSliderThumbRadius(juce::Slider& slider) { return 1; }
 //==============================================================================
 ValueHolderBase::ValueHolderBase()
 {
@@ -31,17 +29,24 @@ ValueHolderBase::~ValueHolderBase()
 
 void ValueHolderBase::timerCallback()
 {
-    if (getNow() - peakTime > holdTime)
+    if (getNow() - peakTime > holdTime && !infiniteHold)
     {
         timerCallbackImpl();
     }
+}
+
+void ValueHolderBase::setHoldTime(int ms)
+{
+    holdTime = ms;
+    if (holdTime == std::numeric_limits<int>::max()) { infiniteHold = true; }
+    else { infiniteHold = false; }
 }
 
 float ValueHolderBase::getCurrentValue() const { return currentValue; }
 
 bool ValueHolderBase::getIsOverThreshold() const { return currentValue > threshold; }
 
-void ValueHolderBase::setHoldTime(int ms) { holdTime = ms; }
+bool ValueHolderBase::getInfiniteHold() const { return infiniteHold; }
 
 void ValueHolderBase::setThreshold(float th) { threshold = th; }
 
@@ -63,27 +68,42 @@ void ValueHolder::updateHeldValue(float v)
 {
     currentValue = v;
 
-    if (getIsOverThreshold())
+    if (getIsOverThreshold() || infiniteHold)
     {
-        peakTime = getNow();
-        if (v > heldValue)
+        if (holdTime == 0)
         {
             heldValue = v;
+        }
+        else
+        {
+            peakTime = getNow();
+            if (v > heldValue)
+            {
+                heldValue = v;
+            }
         }
     }    
 }
 
 void ValueHolder::timerCallbackImpl()
 {
+    
     if (!getIsOverThreshold())
     {
         heldValue = NEGATIVE_INFINITY;
     }
 }
 
+float ValueHolder::getValue() const
+{
+    bool check = getIsOverThreshold();
+    if (check || infiniteHold || getNow() - peakTime <= holdTime) { return heldValue; }
+    else { return currentValue; }
+}
+
 float ValueHolder::getHeldValue() const { return heldValue; }
 //==============================================================================
-DecayingValueHolder::DecayingValueHolder() : decayRateMultiplier(3)
+DecayingValueHolder::DecayingValueHolder() : decayRateMultiplier(1/*3*/)
 {
     setDecayRate(3);
 }
@@ -92,7 +112,7 @@ DecayingValueHolder::~DecayingValueHolder() = default;
 
 void DecayingValueHolder::updateHeldValue(float v)
 {
-    if (v > currentValue)
+    if (v > currentValue || v == NEGATIVE_INFINITY)
     {
         peakTime = getNow();
         currentValue = v;
@@ -106,7 +126,7 @@ void DecayingValueHolder::timerCallbackImpl()
         MAX_DECIBELS,
         currentValue - decayRatePerFrame * decayRateMultiplier);
 
-    decayRateMultiplier++;
+    decayRateMultiplier += 0.05f;
 
     if (currentValue <= NEGATIVE_INFINITY)
     {
@@ -126,6 +146,8 @@ TextMeter::TextMeter() : cachedValueDb(NEGATIVE_INFINITY)
 
 void TextMeter::setThreshold(float threshold) { valueHolder.setThreshold(threshold); }
 
+void TextMeter::setHoldDuration(int newDuration) { valueHolder.setHoldTime(newDuration); }
+
 void TextMeter::update(float valueDb)
 {
     cachedValueDb = valueDb;
@@ -136,25 +158,27 @@ void TextMeter::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds();
     juce::Colour textColor{ juce::Colours::white };
-    auto valueToDisplay = NEGATIVE_INFINITY;
-    //valueHolder.setThreshold(JUCE_LIVE_CONSTANT(0));
+    //auto valueToDisplay = NEGATIVE_INFINITY;
     auto now = ValueHolder::getNow();
+    auto valueToDisplay = valueHolder.getValue();
+    // +++ FIX THIS CONDITION +++
+    //if (valueHolder.getIsOverThreshold() ||
+    //    (now - valueHolder.getPeakTime() < valueHolder.getHoldTime()) &&
+    //    valueHolder.getPeakTime() > valueHolder.getHoldTime())     // for plugin launch
+    if (valueHolder.getIsOverThreshold())
 
-    if (valueHolder.getIsOverThreshold() ||
-        (now - valueHolder.getPeakTime() < valueHolder.getHoldTime()) &&
-        valueHolder.getPeakTime() > valueHolder.getHoldTime())     // for plugin launch
     {
         g.setColour(juce::Colours::red);
         g.fillRect(bounds);
         textColor = juce::Colours::black;
-        valueToDisplay = valueHolder.getHeldValue();
+        //valueToDisplay = valueHolder.getHeldValue();
     }
     else
     {
         g.setColour(juce::Colours::black);
         g.fillRect(bounds);
         textColor = juce::Colours::white;
-        valueToDisplay = valueHolder.getCurrentValue();
+        //valueToDisplay = valueHolder.getCurrentValue();
     }
 
     g.setColour(textColor);
@@ -167,6 +191,14 @@ void TextMeter::paint(juce::Graphics& g)
 }
 //==============================================================================
 void Meter::setThreshold(float threshold) { decayingValueHolder.setThreshold(threshold); }
+
+void Meter::toggleTicks(bool toggleState) { showTicks = toggleState; }
+
+void Meter::setDecayRate(float dbPerSec) { decayingValueHolder.setDecayRate(dbPerSec); }
+
+void Meter::setHoldDuration(int newDuration) { decayingValueHolder.setHoldTime(newDuration); }
+
+void Meter::resetHeldValue() { decayingValueHolder.updateHeldValue(NEGATIVE_INFINITY); }
 
 void Meter::paint(juce::Graphics& g)
 {
@@ -188,15 +220,19 @@ void Meter::paint(juce::Graphics& g)
 
     g.setColour(juce::Colours::white);
     // jmax because higher threshold value -> lesser Y value
-    g.fillRect(bounds.withY(juce::jmax(remap(peakDb), remap(decayingValueHolder.getThreshold()))).withBottom(bounds.getBottom()));
+    g.fillRect(bounds.withY(juce::jmax(remap(peakDb), remap(decayingValueHolder.getThreshold()))).withBottom(bounds.getBottom()));  
+
     if (decayingValueHolder.getIsOverThreshold())
     {
         g.setColour(juce::Colours::orange);
         g.fillRect(bounds.withY(remap(peakDb)).withBottom(remap(decayingValueHolder.getThreshold())));
     }
 
-    g.setColour(decayingValueHolder.getIsOverThreshold() ? juce::Colours::red : juce::Colours::lime);
-    g.fillRect(bounds.withY(remap(decayingValueHolder.getCurrentValue())).withHeight(2));
+    if (showTicks)
+    {
+        g.setColour(decayingValueHolder.getIsOverThreshold() ? juce::Colours::red : juce::Colours::lime);
+        g.fillRect(bounds.withY(remap(decayingValueHolder.getCurrentValue())).withHeight(2));
+    }
 }
 
 void Meter::update(float Level)
@@ -268,11 +304,57 @@ MacroMeter::~MacroMeter() { averager.clear(NEGATIVE_INFINITY); }
 
 bool MacroMeter::getOrientation() const { return orientation; }
 
+void MacroMeter::showMeters(const juce::String& meter)
+{
+    if (meter == "AVG")
+    {
+        avgMeter.setVisible(true);
+        peakMeter.setVisible(false);
+    }
+    else if (meter == "PEAK")
+    {
+        avgMeter.setVisible(false);
+        peakMeter.setVisible(true);
+    }
+    else
+    {
+        avgMeter.setVisible(true);
+        peakMeter.setVisible(true);
+    }
+}
+
+void MacroMeter::toggleTicks(bool toggleState)
+{
+    avgMeter.toggleTicks(toggleState);
+    peakMeter.toggleTicks(toggleState);
+}
+
 void MacroMeter::setThreshold(float threshold)
 {
     textMeter.setThreshold(threshold);
     peakMeter.setThreshold(threshold);
     avgMeter.setThreshold(threshold);
+}
+
+void MacroMeter::setHoldDuration(int newDuration)
+{
+    avgMeter.setHoldDuration(newDuration);
+    peakMeter.setHoldDuration(newDuration);
+    textMeter.setHoldDuration(newDuration);
+}
+
+void MacroMeter::setAvgDuration(float avgDuration) { averager.resize(avgDuration, NEGATIVE_INFINITY); }
+
+void MacroMeter::resetHeldValue()
+{
+    avgMeter.resetHeldValue();
+    peakMeter.resetHeldValue();
+}
+
+void MacroMeter::setDecayRate(float dbPerSec)
+{
+    avgMeter.setDecayRate(dbPerSec);
+    peakMeter.setDecayRate(dbPerSec);
 }
 
 void MacroMeter::update(float level)
@@ -314,7 +396,6 @@ StereoMeter::StereoMeter(juce::String labelName, juce::String labelText) : label
     addAndMakeVisible(label);
 
     addAndMakeVisible(thresholdSlider);
-    thresholdSlider.setLookAndFeel(&newLNF);
     thresholdSlider.setRange(NEGATIVE_INFINITY, MAX_DECIBELS);
 
     label.setColour(juce::Label::backgroundColourId, juce::Colours::black);
@@ -326,10 +407,46 @@ StereoMeter::StereoMeter(juce::String labelName, juce::String labelText) : label
 // empty ref in threshold slider cause newLNF is deleted earlier
 StereoMeter::~StereoMeter() { thresholdSlider.setLookAndFeel(nullptr); }
 
+void StereoMeter::showMeters(const juce::String& meter)
+{
+    leftMacroMeter.showMeters(meter);
+    rightMacroMeter.showMeters(meter);
+}
+
+void StereoMeter::toggleTicks(bool toggleState)
+{
+    leftMacroMeter.toggleTicks(toggleState);
+    rightMacroMeter.toggleTicks(toggleState);
+}
+
 void StereoMeter::setThreshold(float threshold)
 {
     leftMacroMeter.setThreshold(threshold);
     rightMacroMeter.setThreshold(threshold);
+}
+
+void StereoMeter::setHoldDuration(int newDuration)
+{
+    leftMacroMeter.setHoldDuration(newDuration);
+    rightMacroMeter.setHoldDuration(newDuration);
+}
+
+void StereoMeter::resetHeldValue()
+{
+    leftMacroMeter.resetHeldValue();
+    rightMacroMeter.resetHeldValue();
+}
+
+void StereoMeter::setDecayRate(float dbPerSec)
+{
+    leftMacroMeter.setDecayRate(dbPerSec);
+    rightMacroMeter.setDecayRate(dbPerSec);
+}
+
+void StereoMeter::setAverageDuration(float avgDuration)
+{
+    leftMacroMeter.setAvgDuration(avgDuration);
+    rightMacroMeter.setAvgDuration(avgDuration);
 }
 
 void StereoMeter::update(float levelLeft, float levelRight)
@@ -441,7 +558,35 @@ juce::Path Histogram::buildPath(juce::Path& p,
     return fill;
 }
 //==============================================================================
+HistogramContainer::HistogramContainer()
+{
+    addAndMakeVisible(rmsHistogram);
+    addAndMakeVisible(peakHistogram);
+}
+
+void HistogramContainer::setFlex(juce::FlexBox::Direction directionType, juce::Rectangle<int> bounds)
+{
+    juce::FlexBox layout;
+    juce::Array<juce::FlexItem> items;
+
+    layout.flexDirection = directionType;
+    layout.flexWrap = juce::FlexBox::Wrap::noWrap;
+    layout.alignContent = juce::FlexBox::AlignContent::spaceAround;
+    layout.alignItems = juce::FlexBox::AlignItems::stretch;
+    layout.justifyContent = juce::FlexBox::JustifyContent::spaceAround;
+
+    items.add(juce::FlexItem(rmsHistogram).withFlex(0.25f));
+    items.add(juce::FlexItem(peakHistogram).withFlex(0.25f));
+
+    layout.items = items;
+    layout.performLayout(bounds);
+}
+
+void HistogramContainer::resized() { setFlex(juce::FlexBox::Direction::column, getLocalBounds()); }
+//==============================================================================
 Goniometer::Goniometer(juce::AudioBuffer<float>& buffer) : buffer(buffer) { internalBuffer = juce::AudioBuffer<float>(2, 256); }
+
+void Goniometer::setScale(float& coefficient) { scaleCoefficient = coefficient; }
 
 void Goniometer::paint(juce::Graphics& g)
 {
@@ -470,8 +615,8 @@ void Goniometer::paint(juce::Graphics& g)
     {
         auto left = internalBuffer.getSample(0, i);
         auto right = internalBuffer.getSample(1, i);
-        auto mid = (left + right) * conversionCoefficient;
-        auto side = (left - right) * conversionCoefficient;
+        auto mid = (left + right) * conversionCoefficient * scaleCoefficient;
+        auto side = (left - right) * conversionCoefficient * scaleCoefficient;
 
         juce::Point<float> node{ map(side, reducedBounds.getRight(), reducedBounds.getX()),
                                  map(mid, reducedBounds.getBottom(), reducedBounds.getY()) };
@@ -622,6 +767,11 @@ correlationMeter(buffer_, sampleRate)
     addAndMakeVisible(correlationMeter);
 }
 
+void StereoImageMeter::setGoniometerScale(float coefficient)
+{
+    goniometer.setScale(coefficient);
+}
+
 void StereoImageMeter::update()
 {
     correlationMeter.update();
@@ -644,23 +794,111 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
     addAndMakeVisible(rmsStereoMeter);
     addAndMakeVisible(peakStereoMeter);
 
-    addAndMakeVisible(rmsHistogram);
-    addAndMakeVisible(peakHistogram);
+    addAndMakeVisible(histogramContainer);
 
     addAndMakeVisible(stereoImageMeter);
+
+    addAndMakeVisible(meterView);
+    addAndMakeVisible(holdDuration);
+    addAndMakeVisible(decayRate);
+    addAndMakeVisible(avgDuration);
+    addAndMakeVisible(histogramView);
+
+    addAndMakeVisible(resetHold);
+    addAndMakeVisible(enableHold);
+
+    addAndMakeVisible(goniometerScale);
+
+    rmsStereoMeter.thresholdSlider.setLookAndFeel(&newLNF);
+    peakStereoMeter.thresholdSlider.setLookAndFeel(&newLNF);
 
     rmsStereoMeter.thresholdSlider.onValueChange = [this]()
     {
         auto newThreshold = rmsStereoMeter.thresholdSlider.getValue();
         rmsStereoMeter.setThreshold(newThreshold);
-        rmsHistogram.setThreshold(newThreshold);
+        histogramContainer.rmsHistogram.setThreshold(newThreshold);
     };
 
     peakStereoMeter.thresholdSlider.onValueChange = [this]()
     {
         auto newThreshold = peakStereoMeter.thresholdSlider.getValue();
         peakStereoMeter.setThreshold(newThreshold);
-        peakHistogram.setThreshold(newThreshold);
+        histogramContainer.peakHistogram.setThreshold(newThreshold);
+    };
+
+    juce::StringArray meterLines{ "AVG", "PEAK", "BOTH" };
+    meterView.addItemList(meterLines, 1);
+    meterView.setSelectedItemIndex(2);
+    meterView.onChange = [this]()
+    {
+        rmsStereoMeter.showMeters(meterView.getText());
+        peakStereoMeter.showMeters(meterView.getText());
+    };
+
+    juce::StringArray durationKeys{ "0.0s", "0.5s", "2.0s", "4.0s", "6.0s", "inf" };
+    holdDuration.addItemList(durationKeys, 1);
+    holdDuration.setSelectedItemIndex(1);
+    holdDuration.onChange = [this]()
+    {
+        juce::Array<int> durationMs{ 0, 500, 2000, 4000, 6000, std::numeric_limits<int>::max() };
+        int newDuration{ durationMs[holdDuration.getSelectedItemIndex()] };
+
+        if (newDuration == std::numeric_limits<int>::max()) { resetHold.setVisible(true); }
+        else { resetHold.setVisible(false); }
+        rmsStereoMeter.setHoldDuration(newDuration);
+        peakStereoMeter.setHoldDuration(newDuration);
+    };
+
+    juce::StringArray decayKeys{ "-3.0dB/s", "-6.0dB/s", "-12.0dB/s", "-24.0dB/s", "-36.0dB/s" };
+    decayRate.addItemList(decayKeys, 1);
+    decayRate.setSelectedItemIndex(1);
+    decayRate.onChange = [this]()
+    {
+        juce::Array<float> decayRates{ 3.0f, 6.0f, 12.0f, 24.0f, 36.0f };
+        float dbPerSec = decayRates[decayRate.getSelectedItemIndex()];
+        rmsStereoMeter.setDecayRate(dbPerSec);
+        peakStereoMeter.setDecayRate(dbPerSec);
+    };
+
+    juce::StringArray avgDurationKeys{ "100ms", "250ms", "500ms", "1000ms", "2000ms" };
+    avgDuration.addItemList(avgDurationKeys, 1);
+    avgDuration.setSelectedItemIndex(2);
+    avgDuration.onChange = [this]()
+    {
+        juce::Array<float> avgDurations{ 0.10f, 0.25f, 0.50f, 1.0f, 2.0f };
+        float newDuration{ avgDurations[avgDuration.getSelectedItemIndex()] * ValueHolderBase::frameRate };
+        
+        rmsStereoMeter.setAverageDuration(newDuration);
+        peakStereoMeter.setAverageDuration(newDuration);
+    };
+
+    juce::StringArray histogramKeys{ "Stacked", "Side-by-Side" };
+    histogramView.addItemList(histogramKeys, 1);
+    histogramView.setSelectedItemIndex(0);
+    histogramView.onChange = [this]()
+    {
+        if (histogramView.getSelectedItemIndex() == 0) { histogramContainer.setFlex(juce::FlexBox::Direction::column, histogramContainer.getLocalBounds()); }
+        else { histogramContainer.setFlex(juce::FlexBox::Direction::row, histogramContainer.getLocalBounds()); }
+    };
+
+    resetHold.setVisible(false);
+    resetHold.onClick = [this]()
+    {
+        rmsStereoMeter.resetHeldValue();
+        peakStereoMeter.resetHeldValue();
+    };
+
+    enableHold.setToggleState(true, juce::NotificationType::sendNotification);
+    enableHold.onStateChange = [this]()
+    {
+        rmsStereoMeter.toggleTicks(enableHold.getToggleState());
+        peakStereoMeter.toggleTicks(enableHold.getToggleState());
+    };
+    goniometerScale.setRange(0.5f, 2.0f);
+    goniometerScale.setValue(1.0f);
+    goniometerScale.onValueChange = [this]()
+    {
+        stereoImageMeter.setGoniometerScale(goniometerScale.getValue());
     };
 
     startTimerHz(ValueHolderBase::frameRate);
@@ -676,6 +914,9 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
     // (Our component is opaque, so we must completely fill the background with a solid colour)
 
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
+
+    g.setColour(juce::Colours::red);
+    g.drawRect(histogramContainer.getBounds());
 
     //reference = juce::ImageCache::getFromMemory(BinaryData::Reference_png, BinaryData::Reference_pngSize);
     //g.drawImage(reference, getLocalBounds().toFloat(), juce::RectanglePlacement::stretchToFit);
@@ -702,8 +943,8 @@ void PFMCPP_Project10AudioProcessorEditor::timerCallback()
         rmsStereoMeter.update(rmsDbLeft, rmsDbRight);
         peakStereoMeter.update(magDbLeft, magDbRight);
 
-        rmsHistogram.update((rmsDbLeft + rmsDbRight) / 2);
-        peakHistogram.update((magDbLeft + magDbRight) / 2);
+        histogramContainer.rmsHistogram.update((rmsDbLeft + rmsDbRight) / 2);
+        histogramContainer.peakHistogram.update((magDbLeft + magDbRight) / 2);
 
         stereoImageMeter.update();
     }
@@ -713,11 +954,19 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
 {
     auto bounds = getLocalBounds();
 
-    peakHistogram.setBounds(bounds.removeFromBottom(120));
-    rmsHistogram.setBounds(bounds.removeFromBottom(120));
+    histogramContainer.setBounds(bounds.removeFromBottom(240));
 
     rmsStereoMeter.setBounds(bounds.removeFromLeft(85));
     peakStereoMeter.setBounds(bounds.removeFromRight(85));
 
     stereoImageMeter.setBounds(bounds);
+
+    meterView.setBounds(100, 10, 120, 25);
+    holdDuration.setBounds(meterView.getBounds().translated(0, 30));
+    resetHold.setBounds(holdDuration.getBounds().translated(0, 30));
+    enableHold.setBounds(resetHold.getBounds().translated(0, 30));
+    decayRate.setBounds(enableHold.getBounds().translated(0, 30));
+    avgDuration.setBounds(decayRate.getBounds().translated(0, 30));
+    histogramView.setBounds(avgDuration.getBounds().translated(0, 30));
+    goniometerScale.setBounds(500, 10, 100, 100);
 }

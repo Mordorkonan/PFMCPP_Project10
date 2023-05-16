@@ -38,6 +38,7 @@ struct ValueHolderBase : juce::Timer
     float getCurrentValue() const;
     bool getIsOverThreshold() const;
     float getThreshold() const;
+    bool getInfiniteHold() const;
 
     juce::int64 getPeakTime() const;
     juce::int64 getHoldTime() const;
@@ -46,6 +47,7 @@ struct ValueHolderBase : juce::Timer
     static int frameRate;
 
 protected:
+    bool infiniteHold{ false };
     float threshold = 0.0f;
     float currentValue = NEGATIVE_INFINITY;
     juce::int64 peakTime = 0;   // 0 to prevent red textmeter at launch
@@ -59,6 +61,7 @@ struct ValueHolder : ValueHolderBase
     void timerCallbackImpl() override;
     void updateHeldValue(float v) override;
     float getHeldValue() const;
+    float getValue() const;
 
 private:
     float heldValue = NEGATIVE_INFINITY;
@@ -88,6 +91,8 @@ struct TextMeter : juce::Component
     ///expects a decibel value
     void update(float valueDb);
     void setThreshold(float threshold);
+    void setHoldDuration(int newDuration);
+
 private:
     float cachedValueDb;
     ValueHolder valueHolder;
@@ -98,8 +103,13 @@ struct Meter : juce::Component
     void paint(juce::Graphics& g) override;
     void update(float dbLevel);
     void setThreshold(float threshold);
+    void toggleTicks(bool toggleState);
+    void setDecayRate(float dbPerSec);
+    void setHoldDuration(int newDuration);
+    void resetHeldValue();
 
 private:
+    bool showTicks{ true };
     float peakDb;
     DecayingValueHolder decayingValueHolder;
 };
@@ -131,6 +141,12 @@ struct MacroMeter : juce::Component
     juce::Rectangle<int> getAvgMeterBounds() const;
     int getTextMeterHeight() const;
     void setThreshold(float threshold);
+    void showMeters(const juce::String& meter);
+    void toggleTicks(bool toggleState);
+    void setHoldDuration(int newDuration);
+    void resetHeldValue();
+    void setDecayRate(float dbPerSec);
+    void setAvgDuration(float avgDuration);
 
 private:
     int orientation;
@@ -146,6 +162,12 @@ struct StereoMeter : juce::Component
     void update(float levelLeft, float levelRight);
     void resized() override;
     void setThreshold(float threshold);
+    void showMeters(const juce::String& meter);
+    void toggleTicks(bool toggleState);
+    void setHoldDuration(int newDuration);
+    void resetHeldValue();
+    void setDecayRate(float dbPerSec);
+    void setAverageDuration(float avgDuration);
 
     juce::Slider thresholdSlider{ juce::Slider::SliderStyle::LinearVertical,
                                   juce::Slider::TextEntryBoxPosition::NoTextBox };
@@ -180,11 +202,21 @@ private:
     float threshold{ 0.0f };
 };
 //==============================================================================
+struct HistogramContainer : juce::Component
+{
+    HistogramContainer();
+    void resized() override;
+    void setFlex(juce::FlexBox::Direction directionType, juce::Rectangle<int> bounds);
+    Histogram rmsHistogram{ "RMS" }, peakHistogram{ "PEAK" };
+    //juce::FlexBox layout;
+};
+//==============================================================================
 struct Goniometer : juce::Component
 {
     Goniometer(juce::AudioBuffer<float>& buffer);
     void paint(juce::Graphics& g) override;
     void resized() override;
+    void setScale(float& coefficient);
 
 private:
     juce::AudioBuffer<float>& buffer;
@@ -194,6 +226,7 @@ private:
     juce::Array<juce::String> chars { "+S", "L", "M", "R", "-S" };
     juce::Image bkgd;
     int radius{ 0 };
+    float scaleCoefficient{ 1.0f };
     float conversionCoefficient{ juce::Decibels::decibelsToGain(-3.0f) };
 
     void drawBackground();
@@ -220,6 +253,7 @@ struct StereoImageMeter : juce::Component
     StereoImageMeter(juce::AudioBuffer<float>& buffer_, double sampleRate);
     void resized() override;
     void update();
+    void setGoniometerScale(float coefficient);
 
 private:
     Goniometer goniometer;
@@ -248,10 +282,22 @@ private:
     StereoMeter rmsStereoMeter{ "RMS", "L RMS R" },
                 peakStereoMeter{ "PEAK", "L PEAK R" };
 
-    Histogram rmsHistogram{ "RMS" }, peakHistogram{ "PEAK" };
+    //Histogram rmsHistogram{ "RMS" }, peakHistogram{ "PEAK" };
+    HistogramContainer histogramContainer;
 
     StereoImageMeter stereoImageMeter{ buffer, audioProcessor.getSampleRate() };
 
+    juce::ComboBox meterView{ "Meter View" };
+    juce::ComboBox holdDuration{ "Hold Duration" };
+    juce::ComboBox decayRate{ "Decay Rate" };
+    juce::ComboBox avgDuration{ "Average Duration" };
+    juce::ComboBox histogramView{ "Histogram View" };
+
+    juce::ToggleButton enableHold{ "Enable Hold" };
+    juce::TextButton resetHold{ "Reset Hold" };
+
+    juce::Slider goniometerScale{ juce::Slider::SliderStyle::RotaryHorizontalVerticalDrag,
+                                  juce::Slider::TextEntryBoxPosition::TextBoxBelow };
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PFMCPP_Project10AudioProcessorEditor)
 };
-
