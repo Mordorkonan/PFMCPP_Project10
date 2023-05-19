@@ -22,15 +22,15 @@ PFMCPP_Project10AudioProcessor::PFMCPP_Project10AudioProcessor()
                        )
 #endif
 {
-    valueTree.setProperty(juce::Identifier("Decay Time"), 0, nullptr);
-    valueTree.setProperty(juce::Identifier("Average Time"), 0, nullptr);
-    valueTree.setProperty(juce::Identifier("Meter View Mode"), 0, nullptr);
-    valueTree.setProperty(juce::Identifier("Goniometer Scale"), 0, nullptr);
-    valueTree.setProperty(juce::Identifier("Enable Hold"), 0, nullptr);
-    valueTree.setProperty(juce::Identifier("Hold Time"), 0, nullptr);
-    valueTree.setProperty(juce::Identifier("Histogram View"), 0, nullptr);
-    valueTree.setProperty(juce::Identifier("Peak Threshold"), 0, nullptr);
-    valueTree.setProperty(juce::Identifier("RMS Threshold"), 0, nullptr);
+    valueTree.setProperty(juce::Identifier("Decay Time"), 1, nullptr);
+    valueTree.setProperty(juce::Identifier("Average Time"), 1, nullptr);
+    valueTree.setProperty(juce::Identifier("Meter View Mode"), 1, nullptr);
+    valueTree.setProperty(juce::Identifier("Goniometer Scale"), 1, nullptr);
+    valueTree.setProperty(juce::Identifier("Enable Hold"), 1, nullptr);
+    valueTree.setProperty(juce::Identifier("Hold Time"), 1, nullptr);
+    valueTree.setProperty(juce::Identifier("Histogram View"), 1, nullptr);
+    valueTree.setProperty(juce::Identifier("Peak Threshold"), 1, nullptr);
+    valueTree.setProperty(juce::Identifier("RMS Threshold"), 1, nullptr);
 }
 
 PFMCPP_Project10AudioProcessor::~PFMCPP_Project10AudioProcessor()
