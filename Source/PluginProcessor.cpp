@@ -22,6 +22,15 @@ PFMCPP_Project10AudioProcessor::PFMCPP_Project10AudioProcessor()
                        )
 #endif
 {
+    valueTree.setProperty(juce::Identifier("Decay Time"), 1, nullptr);
+    valueTree.setProperty(juce::Identifier("Average Time"), 1, nullptr);
+    valueTree.setProperty(juce::Identifier("Meter View Mode"), 1, nullptr);
+    valueTree.setProperty(juce::Identifier("Goniometer Scale"), 1, nullptr);
+    valueTree.setProperty(juce::Identifier("Enable Hold"), 1, nullptr);
+    valueTree.setProperty(juce::Identifier("Hold Time"), 1, nullptr);
+    valueTree.setProperty(juce::Identifier("Histogram View"), 1, nullptr);
+    valueTree.setProperty(juce::Identifier("Peak Threshold"), 1, nullptr);
+    valueTree.setProperty(juce::Identifier("RMS Threshold"), 1, nullptr);
 }
 
 PFMCPP_Project10AudioProcessor::~PFMCPP_Project10AudioProcessor()
@@ -233,12 +242,26 @@ void PFMCPP_Project10AudioProcessor::getStateInformation (juce::MemoryBlock& des
     // You should use this method to store your parameters in the memory block.
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
+    if (valueTree.isValid())
+    {
+        juce::MemoryOutputStream mos(destData, false);
+        valueTree.writeToStream(mos);
+    }
 }
 
 void PFMCPP_Project10AudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+    juce::MemoryBlock mb(data, sizeInBytes);
+    juce::MemoryInputStream mis(mb, false);
+    juce::ValueTree loadTree = juce::ValueTree::readFromStream(mis);
+
+    if (valueTree.isValid() && valueTree.isEquivalentTo(loadTree))
+    {
+        valueTree = loadTree;
+
+    }
 }
 
 //==============================================================================

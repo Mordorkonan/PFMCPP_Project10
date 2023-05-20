@@ -218,6 +218,7 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     Fifo<juce::AudioBuffer<float>, 32> audioBufferFifo;
+    juce::ValueTree valueTree{ "Value Tree" };
 
 private:
     #if OSC_GAIN

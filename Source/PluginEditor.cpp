@@ -901,6 +901,18 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
         stereoImageMeter.setGoniometerScale(goniometerScale.getValue());
     };
 
+    decayRate.getSelectedIdAsValue().referTo(audioProcessor.valueTree.getPropertyAsValue(juce::Identifier("Decay Time"), nullptr));
+    avgDuration.getSelectedIdAsValue().referTo(audioProcessor.valueTree.getPropertyAsValue(juce::Identifier("Average Time"), nullptr));
+    meterView.getSelectedIdAsValue().referTo(audioProcessor.valueTree.getPropertyAsValue(juce::Identifier("Meter View Mode"), nullptr));
+    holdDuration.getSelectedIdAsValue().referTo(audioProcessor.valueTree.getPropertyAsValue(juce::Identifier("Hold Time"), nullptr));
+    histogramView.getSelectedIdAsValue().referTo(audioProcessor.valueTree.getPropertyAsValue(juce::Identifier("Histogram View"), nullptr));
+
+    enableHold.getToggleStateValue().referTo(audioProcessor.valueTree.getPropertyAsValue(juce::Identifier("Enable Hold"), nullptr));
+
+    goniometerScale.getValueObject().referTo(audioProcessor.valueTree.getPropertyAsValue(juce::Identifier("Goniometer Scale"), nullptr));
+    rmsStereoMeter.thresholdSlider.getValueObject().referTo(audioProcessor.valueTree.getPropertyAsValue(juce::Identifier("RMS Threshold"), nullptr));
+    peakStereoMeter.thresholdSlider.getValueObject().referTo(audioProcessor.valueTree.getPropertyAsValue(juce::Identifier("Peak Threshold"), nullptr));
+
     startTimerHz(ValueHolderBase::frameRate);
     setSize (700, 570);
 }
