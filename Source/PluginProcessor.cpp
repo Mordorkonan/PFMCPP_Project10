@@ -253,11 +253,14 @@ void PFMCPP_Project10AudioProcessor::setStateInformation (const void* data, int 
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
-    if (valueTree.isValid())
+    juce::MemoryBlock mb(data, sizeInBytes);
+    juce::MemoryInputStream mis(mb, false);
+    juce::ValueTree loadTree = juce::ValueTree::readFromStream(mis);
+
+    if (valueTree.isValid() && valueTree.isEquivalentTo(loadTree))
     {
-        juce::MemoryBlock mb(data, sizeInBytes);
-        juce::MemoryInputStream mis(mb, false);
-        valueTree.readFromStream(mis);
+        valueTree = loadTree;
+
     }
 }
 
