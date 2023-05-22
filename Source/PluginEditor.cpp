@@ -217,16 +217,43 @@ void Meter::paint(juce::Graphics& g)
             bounds.getBottom(),
             bounds.getY());
     };
-
+    
+    // === METHOD 1 - USING STACKED RECTANGLES WITH jmax CRITERION ON THRESHOLD
+    /*
     g.setColour(juce::Colours::white);
     // jmax because higher threshold value -> lesser Y value
-    g.fillRect(bounds.withY(juce::jmax(remap(peakDb), remap(decayingValueHolder.getThreshold()))).withBottom(bounds.getBottom()));  
-
+    g.fillRect(bounds.withY(juce::jmax(remap(peakDb), remap(decayingValueHolder.getThreshold()))).withBottom(bounds.getBottom()));
+    
     if (decayingValueHolder.getIsOverThreshold())
     {
         g.setColour(juce::Colours::orange);
         g.fillRect(bounds.withY(remap(peakDb)).withBottom(remap(decayingValueHolder.getThreshold())));
     }
+    */
+
+    // === METHOD 2 - USING GRADIENT WITH CLIPPED REGION REFILLING
+    juce::ColourGradient gradient;
+    gradient.addColour(0.0f, juce::Colours::black.withAlpha(0.15f));
+    gradient.addColour(1.0f, juce::Colours::white.withAlpha(0.45f));
+
+    gradient.point1 = getLocalBounds().toFloat().getBottomLeft();
+    gradient.point2 = getLocalBounds().toFloat().getTopLeft();
+
+    auto drawArea = bounds.withY(remap(peakDb)).withBottom(bounds.getBottom());
+
+    g.setGradientFill(gradient);
+    g.fillRect(drawArea);
+
+    g.setColour(juce::Colours::white);
+    g.drawRect(drawArea);
+
+    g.reduceClipRegion(drawArea.withBottom(remap(decayingValueHolder.getThreshold())));
+
+    g.setColour(juce::Colours::red.withAlpha(0.35f));
+    g.fillRect(drawArea);
+
+    g.setColour(juce::Colours::red);
+    g.drawRect(drawArea);
 
     if (showTicks)
     {
@@ -504,6 +531,8 @@ void Histogram::displayPath(juce::Graphics& g, juce::Rectangle<float> bounds)
     juce::Path fill = buildPath(path, buffer, bounds);
     if (!fill.isEmpty())
     {
+        // === METHOD 1 - USING 4-COLOR GRADIENT
+        /*
         juce::ColourGradient gradient;
         float remappedThreshold = juce::jmap(threshold, NEGATIVE_INFINITY, MAX_DECIBELS, 0.01f, 1.0f);
 
@@ -511,13 +540,35 @@ void Histogram::displayPath(juce::Graphics& g, juce::Rectangle<float> bounds)
         gradient.addColour(remappedThreshold - 0.01, juce::Colours::white.withAlpha(0.15f));
         gradient.addColour(remappedThreshold, juce::Colours::red.withAlpha(0.45f));
         gradient.addColour(1.0f, juce::Colours::red.withAlpha(0.45f));
-        
+
         gradient.point1 = bounds.getBottomLeft();
         gradient.point2 = bounds.getTopLeft();
 
         g.setGradientFill(gradient);
         g.fillPath(fill);
         g.setColour(juce::Colours::white);
+        g.strokePath(path, juce::PathStrokeType(1));
+        */
+
+        // === METHOD 2 - USING 2-COLOR GRADIENT WITH CLIPPED REGION REFILLING
+        juce::ColourGradient gradient;
+        auto remappedThreshold = static_cast<int>(juce::jmap(threshold, NEGATIVE_INFINITY, MAX_DECIBELS, static_cast<float>(getHeight()), 0.0f));
+
+        gradient.addColour(0.0, juce::Colours::black.withAlpha(0.15f));
+        gradient.addColour(1.0, juce::Colours::white.withAlpha(0.45f));
+
+        gradient.point1 = bounds.getBottomLeft();
+        gradient.point2 = bounds.getTopLeft();
+
+        g.setGradientFill(gradient);
+        g.fillPath(fill);
+        g.setColour(juce::Colours::white);
+        g.strokePath(path, juce::PathStrokeType(1));
+
+        g.setColour(juce::Colours::red.withAlpha(0.45f));
+        g.reduceClipRegion(getLocalBounds().withHeight(remappedThreshold));
+        g.fillPath(fill);
+        g.setColour(juce::Colours::red);
         g.strokePath(path, juce::PathStrokeType(1));
     }
 }
@@ -926,12 +977,6 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
     // (Our component is opaque, so we must completely fill the background with a solid colour)
 
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
-
-    g.setColour(juce::Colours::red);
-    g.drawRect(histogramContainer.getBounds());
-
-    //reference = juce::ImageCache::getFromMemory(BinaryData::Reference_png, BinaryData::Reference_pngSize);
-    //g.drawImage(reference, getLocalBounds().toFloat(), juce::RectanglePlacement::stretchToFit);
 }
 
 void PFMCPP_Project10AudioProcessorEditor::timerCallback()
@@ -976,7 +1021,7 @@ void PFMCPP_Project10AudioProcessorEditor::resized()
     meterView.setBounds(100, 10, 120, 25);
     holdDuration.setBounds(meterView.getBounds().translated(0, 30));
     resetHold.setBounds(holdDuration.getBounds().translated(0, 30));
-    enableHold.setBounds(resetHold.getBounds().translated(0, 30));
+    enableHold.setBounds(resetHold.getBounds().translated(0, 100));
     decayRate.setBounds(enableHold.getBounds().translated(0, 30));
     avgDuration.setBounds(decayRate.getBounds().translated(0, 30));
     histogramView.setBounds(avgDuration.getBounds().translated(0, 30));
