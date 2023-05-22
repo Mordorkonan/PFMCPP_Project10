@@ -247,6 +247,12 @@ void Meter::paint(juce::Graphics& g)
     g.setColour(juce::Colours::white);
     g.drawRect(drawArea);
 
+    if (showTicks)
+    {
+        g.setColour(decayingValueHolder.getIsOverThreshold() ? juce::Colours::red : juce::Colours::lime);
+        g.fillRect(bounds.withY(remap(decayingValueHolder.getCurrentValue())).withHeight(2));
+    }
+
     g.reduceClipRegion(drawArea.withBottom(remap(decayingValueHolder.getThreshold())));
 
     g.setColour(juce::Colours::red.withAlpha(0.35f));
@@ -254,12 +260,6 @@ void Meter::paint(juce::Graphics& g)
 
     g.setColour(juce::Colours::red);
     g.drawRect(drawArea);
-
-    if (showTicks)
-    {
-        g.setColour(decayingValueHolder.getIsOverThreshold() ? juce::Colours::red : juce::Colours::lime);
-        g.fillRect(bounds.withY(remap(decayingValueHolder.getCurrentValue())).withHeight(2));
-    }
 }
 
 void Meter::update(float Level)
@@ -565,7 +565,7 @@ void Histogram::displayPath(juce::Graphics& g, juce::Rectangle<float> bounds)
         g.setColour(juce::Colours::white);
         g.strokePath(path, juce::PathStrokeType(1));
 
-        g.setColour(juce::Colours::red.withAlpha(0.45f));
+        g.setColour(juce::Colours::red.withAlpha(0.35f));
         g.reduceClipRegion(getLocalBounds().withHeight(remappedThreshold));
         g.fillPath(fill);
         g.setColour(juce::Colours::red);
@@ -777,9 +777,16 @@ void CorrelationMeter::paint(juce::Graphics& g)
 
 void CorrelationMeter::fillMeter(juce::Graphics & g, juce::Rectangle<float>& bounds, float edgeX1, float edgeX2)
 {
+    juce::ColourGradient gradient;
+    gradient.addColour(0.0f, juce::Colours::white.withAlpha(0.45f));
+    gradient.addColour(0.5f, juce::Colours::black.withAlpha(0.15f));
+    gradient.addColour(1.0f, juce::Colours::white.withAlpha(0.45f));
+    gradient.point1 = bounds.getBottomLeft();
+    gradient.point2 = bounds.getBottomRight();
+    g.setGradientFill(gradient);
+
     if (edgeX1 < edgeX2) { std::swap(edgeX1, edgeX2); }
-    bounds = bounds.withX(edgeX2).withRight(edgeX1);
-    g.setColour(juce::Colours::white.withAlpha(0.15f));
+    bounds = bounds.withX(edgeX2).withRight(edgeX1).reduced(1);
     g.fillRect(bounds);
     g.setColour(juce::Colours::white);
     g.drawRect(bounds);

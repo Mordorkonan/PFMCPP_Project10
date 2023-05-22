@@ -186,7 +186,7 @@ void PFMCPP_Project10AudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         {
             auto sample = osc.processSample(0);
             auto sample2 = osc2.processSample(0);
-            //sample2 *= JUCE_LIVE_CONSTANT(1);
+            sample2 *= JUCE_LIVE_CONSTANT(1);
             //for (int channel = 0; channel < totalNumOutputChannels; ++channel)
             //{
             //    buffer.setSample(channel, i, sample);
