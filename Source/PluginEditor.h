@@ -13,6 +13,9 @@
 
 #define NEGATIVE_INFINITY -66.0f
 #define MAX_DECIBELS 12.0f
+#define THEME_COLOR_DARK juce::Colour(55u, 0u, 127u)
+#define THEME_COLOR_LIGHT juce::Colour(155u, 115u, 255u)
+#define THEME_COLOR_BORDER juce::Colour(178u, 160u, 255u)
 //==============================================================================
 /**
 */
@@ -23,6 +26,15 @@ struct NewLNF : juce::LookAndFeel_V4
     void drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
                           float sliderPos, float minSliderPos, float maxSliderPos,
                           const juce::Slider::SliderStyle style, juce::Slider& slider) override;
+
+    void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
+                          const float rotaryStartAngle, const float rotaryEndAngle, juce::Slider& slider) override;
+
+    void drawComboBox(juce::Graphics& g, int width, int height, bool isButtonDown,
+                      int buttonX, int buttonY, int buttonW, int buttonH, juce::ComboBox& combobox) override;
+
+    void NewLNF::drawButtonBackground(juce::Graphics& g, juce::Button& button, const juce::Colour& backgroundColour,
+                                      bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
 };
 //==============================================================================
 struct ValueHolderBase : juce::Timer
@@ -277,12 +289,11 @@ private:
     // access the processor object that created it.
     PFMCPP_Project10AudioProcessor& audioProcessor;
     juce::AudioBuffer<float> buffer;
-    juce::Image reference;
+    juce::Image referenceImage;
     NewLNF newLNF;
     StereoMeter rmsStereoMeter{ "RMS", "L RMS R" },
                 peakStereoMeter{ "PEAK", "L PEAK R" };
 
-    //Histogram rmsHistogram{ "RMS" }, peakHistogram{ "PEAK" };
     HistogramContainer histogramContainer;
 
     StereoImageMeter stereoImageMeter{ buffer, audioProcessor.getSampleRate() };

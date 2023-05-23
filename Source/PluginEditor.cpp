@@ -13,8 +13,83 @@ void NewLNF::drawLinearSlider(juce::Graphics& g, int x, int y, int width, int he
                               float sliderPos, float minSliderPos, float maxSliderPos,
                               const juce::Slider::SliderStyle style, juce::Slider& slider)
 {
-    g.setColour(juce::Colours::red);
+    g.setColour(THEME_COLOR_BORDER);
     g.drawRect(juce::Rectangle<float>{ static_cast<float>(x), sliderPos - 1.0f, static_cast<float>(width), 2.0f });
+}
+
+void NewLNF::drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
+                      const float rotaryStartAngle, const float rotaryEndAngle, juce::Slider& slider)
+{
+    
+    auto bounds = juce::Rectangle<int>(x, y, width, height).toFloat();
+    auto radius = juce::jmin<float>(static_cast<float>(width), static_cast<float>(height)) / 2.0f;
+    auto lineWidth = 4.0f;
+    auto arcRadius = radius - lineWidth * 0.5f;
+    auto sliderRadius = arcRadius - lineWidth * 1.5f;
+
+    juce::Path sliderArc;
+    sliderArc.addCentredArc(bounds.getCentreX(),
+                                bounds.getCentreY(),
+                                sliderRadius,
+                                sliderRadius,
+                                0.0f,
+                                rotaryStartAngle,
+                                rotaryStartAngle + juce::MathConstants<float>::twoPi,
+                                true);
+
+    g.setColour(THEME_COLOR_BORDER);
+    g.strokePath(sliderArc, juce::PathStrokeType(lineWidth * 0.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+    juce::Path tick;
+    tick.addRectangle(juce::Rectangle<float>{ 0.0f, 0.0f, lineWidth * 0.5f, radius }.withTrimmedTop(4).withTrimmedBottom(10));
+    g.fillPath(tick, juce::AffineTransform::rotation(rotaryStartAngle - juce::MathConstants<float>::pi + sliderPos * (rotaryEndAngle - rotaryStartAngle))
+                                            .translated(bounds.getCentreX(), bounds.getCentreY()));
+    
+    juce::Path outlineArc;
+    outlineArc.addCentredArc(bounds.getCentreX(),
+                             bounds.getCentreY(),
+                             arcRadius,
+                             arcRadius,
+                             0.0f,
+                             rotaryStartAngle,
+                             rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle),
+                             true);
+
+    g.setColour(THEME_COLOR_LIGHT);
+    g.strokePath(outlineArc, juce::PathStrokeType(lineWidth, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+}
+
+void NewLNF::drawComboBox(juce::Graphics& g, int width, int height, bool isButtonDown,
+                          int buttonX, int buttonY, int buttonW, int buttonH, juce::ComboBox& combobox)
+{
+    auto cornerSize = 3.0f;
+    juce::Rectangle<int> boxBounds{ 0, 0, width, height };
+
+    g.setColour(THEME_COLOR_BORDER);
+    g.drawRoundedRectangle(boxBounds.toFloat(), cornerSize, 1.0f);
+
+    juce::Rectangle<int> arrowZone(width - 30, 0, 20, height);
+    juce::Path path;
+    path.startNewSubPath((float)arrowZone.getX() + 3.0f, (float)arrowZone.getCentreY() - 2.0f);
+    path.lineTo((float)arrowZone.getCentreX(), (float)arrowZone.getCentreY() + 3.0f);
+    path.lineTo((float)arrowZone.getRight() - 3.0f, (float)arrowZone.getCentreY() - 2.0f);
+
+    g.setColour(THEME_COLOR_BORDER.withAlpha((combobox.isEnabled() ? 0.9f : 0.2f)));
+    g.strokePath(path, juce::PathStrokeType(2.0f));
+}
+
+void NewLNF::drawButtonBackground(juce::Graphics& g, juce::Button& button, const juce::Colour& backgroundColour,
+                                  bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown)
+{
+    auto cornerSize = 3.0f;
+    auto baseColor = THEME_COLOR_BORDER.withMultipliedSaturation(button.hasKeyboardFocus(true) ? 1.3f : 1.0f)
+                                       .withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f);
+
+    if (shouldDrawButtonAsDown || shouldDrawButtonAsHighlighted)
+        baseColor = baseColor.contrasting(shouldDrawButtonAsDown ? 0.2f : 0.05f);
+
+    g.setColour(baseColor);
+    g.drawRoundedRectangle(button.getLocalBounds().toFloat(), cornerSize, 1.0f);
 }
 //==============================================================================
 ValueHolderBase::ValueHolderBase()
@@ -233,8 +308,10 @@ void Meter::paint(juce::Graphics& g)
 
     // === METHOD 2 - USING GRADIENT WITH CLIPPED REGION REFILLING
     juce::ColourGradient gradient;
-    gradient.addColour(0.0f, juce::Colours::black.withAlpha(0.15f));
-    gradient.addColour(1.0f, juce::Colours::white.withAlpha(0.45f));
+    //gradient.addColour(0.0f, juce::Colours::black.withAlpha(0.15f));
+    //gradient.addColour(1.0f, juce::Colours::white.withAlpha(0.45f));
+    gradient.addColour(0.0f, THEME_COLOR_DARK.withAlpha(0.15f));
+    gradient.addColour(1.0f, THEME_COLOR_LIGHT.withAlpha(0.45f));
 
     gradient.point1 = getLocalBounds().toFloat().getBottomLeft();
     gradient.point2 = getLocalBounds().toFloat().getTopLeft();
@@ -244,12 +321,13 @@ void Meter::paint(juce::Graphics& g)
     g.setGradientFill(gradient);
     g.fillRect(drawArea);
 
-    g.setColour(juce::Colours::white);
+    //g.setColour(juce::Colours::white);
+    g.setColour(THEME_COLOR_BORDER);
     g.drawRect(drawArea);
 
     if (showTicks)
     {
-        g.setColour(decayingValueHolder.getIsOverThreshold() ? juce::Colours::red : juce::Colours::lime);
+        g.setColour(decayingValueHolder.getIsOverThreshold() ? juce::Colours::red : juce::Colours::white);
         g.fillRect(bounds.withY(remap(decayingValueHolder.getCurrentValue())).withHeight(2));
     }
 
@@ -426,8 +504,10 @@ StereoMeter::StereoMeter(juce::String labelName, juce::String labelText) : label
     thresholdSlider.setRange(NEGATIVE_INFINITY, MAX_DECIBELS);
 
     label.setColour(juce::Label::backgroundColourId, juce::Colours::black);
-    label.setColour(juce::Label::outlineColourId, juce::Colours::darkgrey);
-    label.setColour(juce::Label::textColourId, juce::Colours::darkgrey);
+    //label.setColour(juce::Label::outlineColourId, juce::Colours::darkgrey);
+    label.setColour(juce::Label::outlineColourId, THEME_COLOR_BORDER);
+
+    label.setColour(juce::Label::textColourId, juce::Colours::white);
     label.setFont(18);
 }
 
@@ -506,7 +586,9 @@ void Histogram::paint(juce::Graphics& g)
 
     g.setColour(juce::Colours::black);
     g.fillRect(bounds);
-    g.setColour(juce::Colours::darkgrey);
+    g.setColour(THEME_COLOR_BORDER);
+    g.drawRect(bounds);
+    g.setColour(juce::Colours::white);
     g.drawText(title, bounds, juce::Justification::centredBottom);
 
     displayPath(g, bounds.toFloat().reduced(1));
@@ -554,15 +636,18 @@ void Histogram::displayPath(juce::Graphics& g, juce::Rectangle<float> bounds)
         juce::ColourGradient gradient;
         auto remappedThreshold = static_cast<int>(juce::jmap(threshold, NEGATIVE_INFINITY, MAX_DECIBELS, static_cast<float>(getHeight()), 0.0f));
 
-        gradient.addColour(0.0, juce::Colours::black.withAlpha(0.15f));
-        gradient.addColour(1.0, juce::Colours::white.withAlpha(0.45f));
+        //gradient.addColour(0.0, juce::Colours::black.withAlpha(0.15f));
+        //gradient.addColour(1.0, juce::Colours::white.withAlpha(0.45f));
+        gradient.addColour(0.0f, THEME_COLOR_DARK.withAlpha(0.15f));
+        gradient.addColour(1.0f, THEME_COLOR_LIGHT.withAlpha(0.45f));
 
         gradient.point1 = bounds.getBottomLeft();
         gradient.point2 = bounds.getTopLeft();
 
         g.setGradientFill(gradient);
         g.fillPath(fill);
-        g.setColour(juce::Colours::white);
+        //g.setColour(juce::Colours::white);
+        g.setColour(THEME_COLOR_BORDER);
         g.strokePath(path, juce::PathStrokeType(1));
 
         g.setColour(juce::Colours::red.withAlpha(0.35f));
@@ -685,7 +770,8 @@ void Goniometer::paint(juce::Graphics& g)
             else { p.lineTo(node); }
         }
     }
-    g.setColour(juce::Colours::white);
+    //g.setColour(juce::Colours::white);
+    g.setColour(THEME_COLOR_BORDER.interpolatedWith(juce::Colours::white, 0.5f));
     g.strokePath(p, juce::PathStrokeType(1));
 }
 
@@ -778,9 +864,11 @@ void CorrelationMeter::paint(juce::Graphics& g)
 void CorrelationMeter::fillMeter(juce::Graphics & g, juce::Rectangle<float>& bounds, float edgeX1, float edgeX2)
 {
     juce::ColourGradient gradient;
-    gradient.addColour(0.0f, juce::Colours::white.withAlpha(0.45f));
-    gradient.addColour(0.5f, juce::Colours::black.withAlpha(0.15f));
-    gradient.addColour(1.0f, juce::Colours::white.withAlpha(0.45f));
+
+    gradient.addColour(1.0f, THEME_COLOR_LIGHT.withAlpha(0.45f));
+    gradient.addColour(0.0f, THEME_COLOR_DARK.withAlpha(0.15f));
+    gradient.addColour(1.0f, THEME_COLOR_LIGHT.withAlpha(0.45f));
+
     gradient.point1 = bounds.getBottomLeft();
     gradient.point2 = bounds.getBottomRight();
     g.setGradientFill(gradient);
@@ -788,7 +876,8 @@ void CorrelationMeter::fillMeter(juce::Graphics & g, juce::Rectangle<float>& bou
     if (edgeX1 < edgeX2) { std::swap(edgeX1, edgeX2); }
     bounds = bounds.withX(edgeX2).withRight(edgeX1).reduced(1);
     g.fillRect(bounds);
-    g.setColour(juce::Colours::white);
+    //g.setColour(juce::Colours::white);
+    g.setColour(THEME_COLOR_BORDER);
     g.drawRect(bounds);
 }
 
@@ -869,6 +958,15 @@ PFMCPP_Project10AudioProcessorEditor::PFMCPP_Project10AudioProcessorEditor (PFMC
 
     rmsStereoMeter.thresholdSlider.setLookAndFeel(&newLNF);
     peakStereoMeter.thresholdSlider.setLookAndFeel(&newLNF);
+    goniometerScale.setLookAndFeel(&newLNF);
+
+    meterView.setLookAndFeel(&newLNF);
+    holdDuration.setLookAndFeel(&newLNF);
+    decayRate.setLookAndFeel(&newLNF);
+    avgDuration.setLookAndFeel(&newLNF);
+    histogramView.setLookAndFeel(&newLNF);
+
+    resetHold.setLookAndFeel(&newLNF);
 
     rmsStereoMeter.thresholdSlider.onValueChange = [this]()
     {
@@ -983,7 +1081,8 @@ void PFMCPP_Project10AudioProcessorEditor::paint (juce::Graphics& g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
 
-    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
+    referenceImage = juce::ImageCache::getFromMemory(BinaryData::Reference_png, BinaryData::Reference_pngSize);
+    g.drawImage(referenceImage, getLocalBounds().toFloat(), juce::RectanglePlacement::stretchToFit, false);
 }
 
 void PFMCPP_Project10AudioProcessorEditor::timerCallback()
