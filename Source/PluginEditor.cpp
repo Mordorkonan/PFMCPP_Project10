@@ -308,8 +308,7 @@ void Meter::paint(juce::Graphics& g)
 
     // === METHOD 2 - USING GRADIENT WITH CLIPPED REGION REFILLING
     juce::ColourGradient gradient;
-    //gradient.addColour(0.0f, juce::Colours::black.withAlpha(0.15f));
-    //gradient.addColour(1.0f, juce::Colours::white.withAlpha(0.45f));
+
     gradient.addColour(0.0f, THEME_COLOR_DARK.withAlpha(0.15f));
     gradient.addColour(1.0f, THEME_COLOR_LIGHT.withAlpha(0.45f));
 
@@ -321,7 +320,6 @@ void Meter::paint(juce::Graphics& g)
     g.setGradientFill(gradient);
     g.fillRect(drawArea);
 
-    //g.setColour(juce::Colours::white);
     g.setColour(THEME_COLOR_BORDER);
     g.drawRect(drawArea);
 
@@ -636,8 +634,6 @@ void Histogram::displayPath(juce::Graphics& g, juce::Rectangle<float> bounds)
         juce::ColourGradient gradient;
         auto remappedThreshold = static_cast<int>(juce::jmap(threshold, NEGATIVE_INFINITY, MAX_DECIBELS, static_cast<float>(getHeight()), 0.0f));
 
-        //gradient.addColour(0.0, juce::Colours::black.withAlpha(0.15f));
-        //gradient.addColour(1.0, juce::Colours::white.withAlpha(0.45f));
         gradient.addColour(0.0f, THEME_COLOR_DARK.withAlpha(0.15f));
         gradient.addColour(1.0f, THEME_COLOR_LIGHT.withAlpha(0.45f));
 
@@ -646,7 +642,6 @@ void Histogram::displayPath(juce::Graphics& g, juce::Rectangle<float> bounds)
 
         g.setGradientFill(gradient);
         g.fillPath(fill);
-        //g.setColour(juce::Colours::white);
         g.setColour(THEME_COLOR_BORDER);
         g.strokePath(path, juce::PathStrokeType(1));
 
@@ -770,7 +765,6 @@ void Goniometer::paint(juce::Graphics& g)
             else { p.lineTo(node); }
         }
     }
-    //g.setColour(juce::Colours::white);
     g.setColour(THEME_COLOR_BORDER.interpolatedWith(juce::Colours::white, 0.5f));
     g.strokePath(p, juce::PathStrokeType(1));
 }
